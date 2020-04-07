@@ -22,6 +22,10 @@
 #ifndef __NUMA_H
 #define __NUMA_H 1
 
+#include <barrelfish/caddr.h>
+#include <barrelfish_kpi/types.h>
+#include <errors/errno.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
