@@ -116,22 +116,38 @@ static void send_cap_request(struct interdisp_binding *st,
     errval_t err = SYS_ERR_OK, err2;
     struct capref *dest = (struct capref *)(uintptr_t)info;
 
+    struct cnoderef cnode_span_cn = {
+        .croot = CPTR_ROOTCN,
+        .cnode = ROOTCN_SLOT_ADDR(ROOTCN_SLOT_SPAN_CN),
+        .level = CNODE_TYPE_OTHER,
+    };
+
+    if (cnodecmp(dest->cnode, cnode_span_cn)) {
+        struct capref spancn = { .cnode = cnode_root, .slot = ROOTCN_SLOT_SPAN_CN };
+
+        struct capability capinfo;
+        err = cap_direct_identify(spancn, &capinfo);
+        if (err_no(err) == SYS_ERR_CAP_NOT_FOUND) {
+            cslot_t retslots;
+            struct cnoderef cnoderef;
+            err = cnode_create_raw(spancn, &cnoderef, ObjType_L2CNode, L2_CNODE_SLOTS, &retslots);
+            if (err_is_fail(err)) {
+                goto send_reply;
+            }
+        }
+    } else {
+        debug_printf("not in the span cn\n");
+    }
+
     err = cap_copy(*dest, cap);
     if(err_is_fail(err)) {
-        err_push(err, LIB_ERR_CAP_COPY_FAIL);
-        DEBUG_ERR(err, "cap_copy");
-        abort();
-        goto send_reply;
-    }
-    err = cap_destroy(cap);
-    if(err_is_fail(err)) {
-        err_push(err, LIB_ERR_CAP_DELETE_FAIL);
-        DEBUG_ERR(err, "cap_destroy default");
-        abort();
         goto send_reply;
     }
 
  send_reply:
+    // destroy the original capability.
+    cap_destroy(cap);
+
     err2 = st->tx_vtbl.send_cap_reply(st, NOP_CONT, err);
     if (err_is_fail(err2)) {
         DEBUG_ERR(err, "Failed to send send_cap_reply");
@@ -831,11 +847,9 @@ errval_t domain_send_cap(coreid_t core_id, struct capref cap)
         return err_push(err, LIB_ERR_SEND_CAP_REQUEST);
     }
 
-    assert(!"NYI");
-    // TODO: Handled on different thread
-    /* while(!cap_received) { */
-    /*     messages_wait_and_handle_next(); */
-    /* } */
+    while(!cap_received) {
+        event_dispatch_non_block(get_default_waitset());
+    }
 
     return send_cap_err;
 }

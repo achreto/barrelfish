@@ -80,7 +80,8 @@
 #define ROOTCN_SLOT_ARGCN        11  ///< Argcn slot in root cnode
 #define ROOTCN_SLOT_BSPKCB       12  ///< BSP KCB cap to fix reverse lookup issues
 #define ROOTCN_SLOT_EARLY_CN_CN  13  ///< Slot for a cnode of L2_CNODE_SIZE frames
-#define ROOTCN_SLOTS_USER        14  ///< First free slot in root cnode for user
+#define ROOTCN_SLOT_SPAN_CN      14  ///< Slot for a cnode for sending caps between dispatchers
+#define ROOTCN_SLOTS_USER        15  ///< First free slot in root cnode for user
 
 /* Size of CNodes in Root CNode if not the default size */
 #define SLOT_ALLOC_CNODE_BITS   L2_CNODE_BITS
