@@ -271,7 +271,7 @@ errval_t barrelfish_init_onthread(struct spawn_domain_params *params)
         if (params != NULL && params->pagesize) {
             morecore_pagesize =  params->pagesize;
 
-            debug_printf("%s: Using supplied pagesize: %zu\n", __FUNCTION__, morecore_pagesize);
+            //debug_printf("%s: Using supplied pagesize: %zu\n", __FUNCTION__, morecore_pagesize);
 
             if (!pagesize_ok(morecore_pagesize)) {
                 debug_printf("Supplied pagesize not available on current arch, falling back to 4kB pages\n");
