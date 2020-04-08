@@ -189,7 +189,7 @@ static errval_t spawn(struct capref domain_cap, const char *path,
     err = cap_copy(pe->dcb, si.dcb);
     assert(err_is_ok(err));
     pe->status = PS_STATUS_RUNNING;
-    
+
     if (!capref_is_null(domain_cap)) {
         err = ps_hash_domain(pe, domain_cap);
         if (err_is_fail(err)) {
@@ -411,7 +411,7 @@ static void spawn_request_handler(struct spawn_binding *b,
         err = SPAWN_ERR_NOT_PROC_MNGR;
         goto reply;
     }
-    
+
     spawn_domainid_t dummy_domain_id;
     err = spawn_with_caps_common(domain_cap, path, argvbuf, argvbytes, envbuf,
                                  envbytes, NULL_CAP, NULL_CAP, flags,
@@ -445,7 +445,7 @@ static void span_request_handler(struct spawn_binding *b,
     struct spawninfo si;
     memset(&si, 0, sizeof(si));
 
-    debug_printf("Spanning domain to core %d\n", disp_get_core_id());
+    //debug_printf("Spanning domain to core %d\n", disp_get_core_id());
 
     // Span domain
     err = spawn_span_domain(&si, vroot, dispframe);
