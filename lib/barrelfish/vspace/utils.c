@@ -472,3 +472,40 @@ errval_t vspace_map_one_frame_one_map(struct memobj_one_frame_one_map *memobj,
 
     return SYS_ERR_OK;
 }
+
+
+errval_t vspace_change_flags(lvaddr_t addr, size_t size, vregion_flags_t flags)
+{
+    errval_t err;
+
+    lvaddr_t end = addr + size;
+
+    while (addr < end) {
+        struct vregion *vregion = vspace_get_region(get_current_vspace(), (void *)addr);
+        if (vregion == NULL) {
+            return LIB_ERR_VSPACE_VREGION_NOT_FOUND;
+        }
+
+        struct memobj *mobj = vregion_get_memobj(vregion);
+        assert(mobj);
+
+        genvaddr_t offset = 0;
+        if (addr > vregion_get_base_addr(vregion)) {
+            offset = addr - vregion_get_base_addr(vregion);
+        }
+
+        size_t range = size;
+        if (size > vregion_get_size(vregion) - offset) {
+            range = vregion_get_size(vregion) - offset;
+        }
+
+        err = mobj->f.protect(mobj, vregion, offset, range, flags);
+        if (err_is_fail(err)) {
+            return err;
+        }
+
+        addr += range;
+    }
+
+    return SYS_ERR_OK;
+}

@@ -80,6 +80,8 @@ errval_t vspace_map_one_frame_fixed_attr(lvaddr_t addr, size_t size,
                                     struct memobj **retmemobj,
                                          struct vregion **retvregion);
 
+errval_t vspace_change_flags(lvaddr_t addr, size_t size, vregion_flags_t flags);
+
 __END_DECLS
 
 #endif // LIBBARRELFISH_VSPACE_COMMON_H
