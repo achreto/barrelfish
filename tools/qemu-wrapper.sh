@@ -194,6 +194,7 @@ case "$ARCH" in
         -smp ${SMP} \
         -m ${MEMORY} \
         ${KVM} \
+        -cpu host,migratable=no,+invtsc,+tsc,+x2apic,+fsgsbase \
         -netdev user,id=network0 \
         -device $NIC_MODEL,netdev=network0 \
         -device ahci,id=ahci \
