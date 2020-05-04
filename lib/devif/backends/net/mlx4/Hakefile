@@ -69,6 +69,7 @@
         "drivers/infiniband/core/smi.c"
     ],
     addLibraries = [ "pci" ],
-    addIncludes = [ "include" ]
+    addIncludes = [ "include" ],
+    addCFlags = [ "-Wno-error=address-of-packed-member" ]
   }
 ]
