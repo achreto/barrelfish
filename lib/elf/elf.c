@@ -125,7 +125,7 @@ size_t elf_virtual_size(lvaddr_t base)
             break;
 
           case ELFCLASS32:
-            elfsize = elf_virtual_size32((struct Elf32_Ehdr*)ehead);
+            elfsize = elf_virtual_size32((struct Elf32_Ehdr*)base);
             break;
         }
     }
@@ -149,7 +149,7 @@ genvaddr_t elf_virtual_base(lvaddr_t base)
             break;
 
           case ELFCLASS32:
-            elfbase = elf_virtual_base32((struct Elf32_Ehdr*)ehead);
+            elfbase = elf_virtual_base32((struct Elf32_Ehdr*)base);
             break;
         }
     }
