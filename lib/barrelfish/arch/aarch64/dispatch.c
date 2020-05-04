@@ -31,11 +31,14 @@ extern void run_entry(void);
 extern void pagefault_entry(void);
 extern void disabled_pagefault_entry(void);
 extern void trap_entry(void);
+extern void disp_save_epilog(void);
 
 void __attribute__ ((visibility ("hidden"))) disp_resume_context_epilog(void);
 void __attribute__ ((visibility ("hidden"))) disp_switch_epilog(void);
-void __attribute__ ((visibility ("hidden"))) disp_save_epilog(void);
 void __attribute__ ((visibility ("hidden"))) disp_save_rm_kcb_epilog(void);
+
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -221,8 +224,6 @@ void disp_save(dispatcher_handle_t handle,
     // enter thread scheduler again
     // this doesn't return, and will call disp_yield if there's nothing to do
     thread_run_disabled(handle);
-
-    __asm volatile("disp_save_epilog:");
 }
 
 void disp_save_rm_kcb(void)
