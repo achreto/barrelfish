@@ -197,7 +197,7 @@ void __attribute__ ((noreturn)) wait_for_interrupt(void)
                    // to make sure pending interrupts are handeled immediately.
                    "nop                 \n\t"
                    "hlt                 \n\t"
-                   :: [stack_size] "i" (K1OM_KERNEL_STACK_SIZE) : "rsp" );
+                   :: [stack_size] "i" (K1OM_KERNEL_STACK_SIZE) :  );
 #else
     __asm volatile("lea x86_64_kernel_stack(%%rip), %%rsp\n\t"
                    "addq %[stack_size], %%rsp\n\t"
@@ -207,7 +207,7 @@ void __attribute__ ((noreturn)) wait_for_interrupt(void)
                    // to make sure pending interrupts are handeled immediately.
                    "nop                 \n\t"
                    "hlt                 \n\t"
-                   :: [stack_size] "i" (X86_64_KERNEL_STACK_SIZE) : "rsp" );
+                   :: [stack_size] "i" (X86_64_KERNEL_STACK_SIZE) :  );
 #endif
     panic("hlt should not return");
 }

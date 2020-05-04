@@ -186,7 +186,7 @@ disp_switch(dispatcher_handle_t handle, arch_registers_state_t *from_state,
                       [stack] "d" ((lvaddr_t)&disp_gen->stack[DISPATCHER_STACK_WORDS]),
                       [disp] "D" (disp),
                       [to_regs] "S" (to_regs)
-                    : "rbx", "rcx", "rsp",
+                    : "rbx", "rcx",
                       "r8", "r9", "r10", "r12", "r13", "r14", "r15"
                     );
 
