@@ -16,16 +16,20 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoMonadFailDesugaring #-} 
 
 module SockeyeInstantiator
 ( instantiateSockeye ) where
 
 import Control.Monad.State
+import Control.Monad.Fail as Fail
 
 import Data.List (intercalate)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes, fromMaybe)
+
+import Data.Functor.Identity
 
 import Numeric (showHex)
 
@@ -353,7 +357,7 @@ instance Instantiatable a b => Instantiatable (CheckAST.For a) [b] where
         let body = CheckAST.body ast
             varRanges = CheckAST.varRanges ast
         concreteRanges <- instantiate context varRanges
-        let valueList = Map.foldWithKey iterations [] concreteRanges
+        let valueList = Map.foldrWithKey iterations [] concreteRanges
             iterContexts = map iterationContext valueList
         mapM (\c -> instantiate c body) iterContexts
         where

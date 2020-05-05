@@ -812,7 +812,7 @@ static int dd(int argc, char *argv[])
 
     size_t one_per_cent = (blocksize * count) / 100;
 
-    printf("from: %s to: %s bs=%zd count=%zd seek=%zd skip=%zd\n", source, target, blocksize, count, seek, skip);
+    printf("from: %s to: %s bs=%zd count=%zd seek=%zd skip=%zd\n", source == NULL ? "" : source, target == NULL ? "" : target, blocksize, count, seek, skip);
 
     if (source != NULL)
     {

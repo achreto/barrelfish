@@ -19,14 +19,14 @@ stages:
 
 commithook-signedoff:
   stage: commithooks
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   script:
     - "! git log  --since='2018-01-01' --invert-grep --grep='Signed-off-by' 
         | tee 'commits_not_signed.txt' | grep 'commit' -A 5"
 
 commithook-merged:
   stage: commithooks
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   script:
     - "! grep -r '^<<<<<<< '"
 
@@ -35,13 +35,13 @@ commithook-merged:
 
 hake-tool:
   stage: hake
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   script:
     - "mkdir build; (cd build && ../hake/hake.sh --no-hake -s ../ -a x86_64)"
 
 hake-files:
   stage: hake
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   script:
     - "mkdir build; (cd build && ../hake/hake.sh --no-deps -s ../ -a x86_64)"    
 
@@ -50,7 +50,7 @@ hake-files:
 
 build-x86:
   stage: build
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   artifacts:
     paths:
       - build-x86.log
@@ -63,7 +63,7 @@ build-x86:
 
 build-armv7:
   stage: build
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   artifacts:
     paths:
       - build-armv7.log
@@ -76,7 +76,7 @@ build-armv7:
 
 build-armv8:
   stage: build
-  image: achreto/barrelfish-ci
+  image: achreto/barrelfish-ci:20.04-lts
   artifacts:
     paths:
       - build-armv8.log
@@ -93,7 +93,7 @@ build-armv8:
 #   stage: build
 #   dependencies:
 #     - x86:hake
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "(cd build-x86 &&  make X86_64_Basic)"
 
@@ -101,7 +101,7 @@ build-armv8:
 #   stage: tests
 #   dependencies:
 #     - x86:build
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "mkdir -p results"
 #     - "(./tools/harness/scalebench.py --xml --debug -B build-x86 -m qemu1 -t memtest . results )"    
@@ -110,7 +110,7 @@ build-armv8:
 #   stage: tests
 #   dependencies:
 #     - x86:build
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "mkdir -p results"
 #     - "(./tools/harness/scalebench.py --xml --debug -B build-x86 -m qemu4 -t memtest . results )"    
@@ -121,7 +121,7 @@ build-armv8:
 
 # armv7:hake:
 #   stage: hake
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   artifacts:
 #     paths:
 #       - build-armv7
@@ -134,7 +134,7 @@ build-armv8:
 #   stage: build
 #   dependencies:
 #     - armv7:hake
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "(cd build-armv7 &&  make PandaboardES)"
 
@@ -142,7 +142,7 @@ build-armv8:
 #   stage: tests
 #   dependencies:
 #     - armv7:build
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "mkdir -p results"
 #     - "(./tools/harness/scalebench.py --xml --debug -B build-armv7 -m qemu_armv7 -t memtest . results )"
@@ -153,7 +153,7 @@ build-armv8:
 
 # armv8:hake:
 #   stage: hake
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   artifacts:
 #     paths:
 #       - build-armv8
@@ -166,7 +166,7 @@ build-armv8:
 #   stage: build
 #   dependencies:
 #     - armv8:hake
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "(cd build-armv8 &&  make ThunderX)"    
 
@@ -174,7 +174,7 @@ build-armv8:
 #   stage: tests
 #   dependencies:
 #     - armv8:build
-#   image: achreto/barrelfish-ci
+#   image: achreto/barrelfish-ci:20.04-lts
 #   script:
 #     - "mkdir -p results"
 #     - "(./tools/harness/scalebench.py --xml --debug -B build-armv8 -m qemu_armv8_1 -t memtest . results )"

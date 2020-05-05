@@ -1,6 +1,6 @@
 #include <barrelfish_kpi/registers_arch.h>
 
-.global disp_save_context
+.global disp_save_context, disp_save_epilog
 
 /* Save the current thread's context.  This is only called for a voluntary
  * switch, and is therefore reached via a function call.  This means that
@@ -29,3 +29,10 @@ disp_save_context:
  * alongside it. */
 disp_save_context_resume:
     ret
+    
+    
+disp_save_epilog:
+	ldp	x19, x20, [sp, 16]
+	ldp	x21, x22, [sp, 32]
+	ldp	x29, x30, [sp], 48
+	ret

@@ -217,7 +217,7 @@ extern int _end_text_nx;
 //
 #if defined(__pic__)
     #define KILL_CALLEE_SAVES()                                           \
-    __asm__ volatile ("" : : : "sp",                                      \
+    __asm__ volatile ("" : : :                                            \
                          "v1", "v2", "v3", "v4", "v5", "v7",              \
                          "s16", "s17", "s18", "s19", "s20", "s21", "s22", \
                          "s23", "s24", "s25", "s26", "s27", "s28", "s29", \
@@ -235,10 +235,9 @@ extern int _end_text_nx;
 #endif
 #elif defined(__aarch64__)
     #define KILL_CALLEE_SAVES()                                           \
-    __asm__ volatile ("" : : :                                      \
-                         "x19", "x20", "x21", "x22", "x23", "x24", "x25",        \
-                         "x26", "x27", "x28", \
-                         "31",                                     \
+    __asm__ volatile ("" : : :                                            \
+                         "x19", "x20", "x21", "x22", "x23", "x24", "x25", \
+                         "x26", "x27", "x28",                             \
                          "memory")
 
 #else

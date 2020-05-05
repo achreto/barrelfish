@@ -341,7 +341,7 @@ relocate_stack(lvaddr_t offset)
     __asm volatile("add %[stack], %%rsp\n\t"
                    : /* No output */
                    : [stack] "er" (offset)
-                   : "rsp"
+                   : 
                    );
 }
 

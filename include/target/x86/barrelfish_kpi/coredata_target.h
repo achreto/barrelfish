@@ -43,8 +43,8 @@ struct x86_coredata_elf {
  * it so that it matches up between heterogeneous cores.
  */
 struct x86_core_data {
-    uint32_t multiboot_flags; ///< The multiboot flags of the cpu module
     struct x86_coredata_elf elf; ///< elf structure for the cpu module
+    uint32_t multiboot_flags; ///< The multiboot flags of the cpu module
     genpaddr_t module_start;  ///< The start of the cpu module
     genpaddr_t module_end;    ///< The end of the cpu module
     genpaddr_t urpc_frame_base;
@@ -75,7 +75,7 @@ struct x86_core_data {
     struct xeon_phi_boot_params *bp;
     uint8_t  xeon_phi_id;
 #endif
-} __attribute__ ((packed));
+};
 
 #define X86_CORE_DATA_PAGES 1100
 

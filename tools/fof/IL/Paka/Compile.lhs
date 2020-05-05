@@ -12,7 +12,7 @@
 %if false
 
 > module IL.Paka.Compile where
-
+> import Prelude hiding ((<>))
 > import Text.PrettyPrint.HughesPJ as Pprinter 
 > import qualified Data.Map as Map
 > import Data.List
