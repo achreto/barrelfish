@@ -329,11 +329,19 @@ static void mem_allocate_handler(struct mem_binding *b, uint8_t bits,
         ret = mymm_alloc(cap, bits, minbase, maxlimit);
         if (err_is_ok(ret)) {
             mem_avail -= 1UL << bits;
+
+
         } else {
-            // DEBUG_ERR(ret, "allocation of %d bits in % " PRIxGENPADDR "-%" PRIxGENPADDR " failed",
-            //          bits, minbase, maxlimit);
+            DEBUG_ERR(ret, "allocation of %d bits in % " PRIxGENPADDR "-%" PRIxGENPADDR " failed, available memory: %zu MB",
+                      bits, minbase, maxlimit, mem_avail >> 20);
             *cap = NULL_CAP;
         }
+
+        #define MEMORY_WARN_SIZE ((size_t)32 << 20)
+        if (mem_avail < MEMORY_WARN_SIZE) {
+                debug_printf("Less than %zu MB memory available\n", MEMORY_WARN_SIZE >> 20);
+         }
+
 #ifdef OSDI18_PAPER_HACK
     }
 #endif
