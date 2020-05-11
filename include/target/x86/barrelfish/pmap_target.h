@@ -22,6 +22,8 @@
 
 #define MCN_COUNT DIVIDE_ROUND_UP(PTABLE_ENTRIES, L2_CNODE_SLOTS)
 
+#define PMAP_VNODE_CACHE_ENABLED
+
 /// Node in the meta-data, corresponds to an actual VNode object
 struct vnode { // NB: misnomer :)
     struct vnode_public v;   ///< public part of vnode
@@ -52,6 +54,16 @@ struct pmap_x86 {
     genvaddr_t min_mappable_va; ///< Minimum mappable virtual address
     genvaddr_t max_mappable_va; ///< Maximum mappable virtual address
     size_t used_cap_slots;      ///< Current count of capability slots allocated by pmap code
+#ifdef PMAP_VNODE_CACHE_ENABLED
+    struct capref cached_ram_cap;
+    size_t cached_ram_offset;
+    size_t cached_ram_size;
+#if GLOBAL_MCN
+    struct capref cached_mcn_cap;
+    size_t cached_mcn_offset;
+    size_t cached_mcn_size;
+#endif
+#endif
 };
 
 #endif // TARGET_X86_BARRELFISH_PMAP_H
