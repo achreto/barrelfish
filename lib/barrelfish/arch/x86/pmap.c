@@ -155,7 +155,7 @@ static errval_t mcn_create_cached(struct pmap_x86 *pmap, struct vnode *newvnode)
         pmap->cached_mcn_size = (1ULL << MCN_ALLOC_BITS);
         err = ram_alloc(&pmap->cached_mcn_cap, MCN_ALLOC_BITS);
         if (err_is_fail(err)) {
-            debug_printf("allocation failed... falling back to default alloc\n");
+            //debug_printf("allocation failed... falling back to default alloc\n");
             /* allocate mapping cnodes */
             for (int i = 0; i < MCN_COUNT; i++) {
                 err = cnode_create_l2(&newvnode->u.vnode.mcn[i], &newvnode->u.vnode.mcnode[i]);
