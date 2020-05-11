@@ -130,7 +130,7 @@ struct sfn5122f_driver_state {
     void* d_virt;
     //sfn5122f_msix_t *d_msix;
     uint64_t d_mac[2];
-    bool initialized;    
+    bool initialized;
     struct capref regframe;
     /* Interrupt state  */
     struct capref int_ker;
@@ -142,7 +142,7 @@ struct sfn5122f_driver_state {
     // Port  info
     uint32_t cap[2];
     uint32_t speed[2];
-    uint32_t flags[2];  
+    uint32_t flags[2];
     uint32_t fcntl [2];
 
     // Phy info
@@ -206,12 +206,12 @@ struct sfn5122f_driver_state {
 //static void queue_hw_stop(uint16_t n);
 
 static void global_interrupt_handler(void* arg);
-static void setup_interrupt(struct sfn5122f_driver_state* st, size_t *msix_index, 
+static void setup_interrupt(struct sfn5122f_driver_state* st, size_t *msix_index,
                             uint8_t core, uint8_t vector);
 /***************************************************************************/
 /* Filters */
 
-static void sfn5122f_filter_port_setup(struct sfn5122f_driver_state* st, int idx, 
+static void sfn5122f_filter_port_setup(struct sfn5122f_driver_state* st, int idx,
                                        struct sfn5122f_filter_ip* filter)
 {
     sfn5122f_rx_filter_tbl_lo_t filter_lo = 0;
@@ -271,7 +271,7 @@ static uint32_t build_key(struct sfn5122f_filter_ip* f)
     uint16_t port2;
     host1 = f->src_ip;
     host2 = f->dst_ip;
-    
+
     if (f->type_ip == net_filter_PORT_UDP) {
        port1 = f->dst_port;
        port2 = f->src_port;
@@ -326,7 +326,7 @@ static uint16_t filter_increment(uint32_t key)
     return key * 2 - 1;
 }
 
-static int ftqf_alloc(struct sfn5122f_driver_state* st, 
+static int ftqf_alloc(struct sfn5122f_driver_state* st,
                       struct sfn5122f_filter_ip* f)
 {
     // Documentation suggest hashing using a certain algorithm
@@ -337,18 +337,18 @@ static int ftqf_alloc(struct sfn5122f_driver_state* st,
     key = build_key(f);
     hash = filter_hash(key);
     incr = filter_increment(key);
-    
+
     key = hash & (NUM_FILTERS_IP - 1);
 
     while (true) {
         if (st->filters_rx_ip[key].enabled == false) {
             return key;
         }
-        
+
         if (depth > 3) {
             return -1;
         }
-            
+
         key = (key + incr) & (NUM_FILTERS_IP - 1);
         depth++;
     }
@@ -356,7 +356,7 @@ static int ftqf_alloc(struct sfn5122f_driver_state* st,
     return key;
 }
 
-static errval_t reg_port_filter(struct sfn5122f_driver_state* st, 
+static errval_t reg_port_filter(struct sfn5122f_driver_state* st,
                                 struct sfn5122f_filter_ip* f, uint64_t* fid)
 {
     int filt_ind;
@@ -441,7 +441,7 @@ static void get_link(struct sfn5122f_driver_state* st, uint8_t port)
     uint8_t out[CMD_GET_LINK_OUT_LEN];
     errval_t err;
 
-    err = mcdi_rpc(CMD_GET_LINK, NULL, 0 , out, CMD_GET_LINK_OUT_LEN, NULL, 
+    err = mcdi_rpc(CMD_GET_LINK, NULL, 0 , out, CMD_GET_LINK_OUT_LEN, NULL,
                    port,st->d);
     assert(err_is_ok(err));
 
@@ -449,7 +449,7 @@ static void get_link(struct sfn5122f_driver_state* st, uint8_t port)
     memcpy(&(st->speed[port]), out+CMD_GET_LINK_OUT_SPEED_OFFSET, 4);
     memcpy(&(st->fcntl[port]), out+CMD_GET_LINK_OUT_FCNTL_OFFSET, 4);
     memcpy(&(st->flags[port]), out+CMD_GET_LINK_OUT_FLAGS_OFFSET, 4);
-   
+
     decode_link(st->fcntl[port], st->flags[port], st->speed[port]);
 
 }
@@ -469,7 +469,7 @@ static void init_port(struct sfn5122f_driver_state* st, uint8_t port)
     /* set MTU */
     reg = MTU_MAX;
     memcpy(in + CMD_SET_MAC_IN_MTU_OFFSET , &reg, 4);
-    
+
     in[CMD_SET_MAC_IN_DRAIN_OFFSET] = 0;
     /* Reject unicast packets?   */
     in[CMD_SET_MAC_IN_REJECT_OFFSET] = 1;
@@ -485,7 +485,7 @@ static void init_port(struct sfn5122f_driver_state* st, uint8_t port)
 
     memset(in, 0 , sizeof(in));
     memcpy(in + CMD_SET_LINK_IN_CAP_OFFSET, &(st->cap[st->pci_function]), 4);
-    
+
     err = mcdi_rpc(CMD_SET_LINK, in, CMD_SET_LINK_IN_LEN, NULL, 0, NULL, 0, st->d);
     assert(err_is_ok(err));
 }
@@ -534,12 +534,12 @@ static void probe_all(struct sfn5122f_driver_state* st)
 {
     uint32_t offset = 0;
     uint32_t outlen = 0;
-    
+
     uint64_t reg = 0;
-    
+
     uint8_t in[16];
     uint8_t out[252];
-     
+
     struct frame_identity frameid = { .base = 0, .bytes = 0 };
     errval_t r;
 
@@ -559,7 +559,7 @@ static void probe_all(struct sfn5122f_driver_state* st)
     // before we can restet NIC
     memset(&in, 0, sizeof(in));
     memset(&out, 0 , sizeof(out));
-    
+
     r = mcdi_rpc(CMD_GET_VERSION, NULL, 0, out, CMD_GET_VERSION_OUT_LEN,
                  &outlen, st->pci_function, st->d);
     assert(err_is_ok(r));
@@ -586,7 +586,7 @@ static void probe_all(struct sfn5122f_driver_state* st)
       // Reset filter of card
       mcdi_rpc(CMD_WOL_FILTER_RESET, NULL, 0, NULL, 0, NULL, st->pci_function, st->d);
     }
- 
+
     //  memory for INT_KER
     st->int_ker_virt = alloc_map_frame(VREGION_FLAGS_READ_WRITE,
                                    2*sizeof(uint64_t), &(st->int_ker));
@@ -599,7 +599,7 @@ static void probe_all(struct sfn5122f_driver_state* st)
 
     memcpy(&(st->d_mac[0]), out+MCDI_MAC_PORT_OFFSET(0) ,6);
     memcpy(&(st->d_mac[1]), out+MCDI_MAC_PORT_OFFSET(1) ,6);
-    
+
     // read phy configuration
     r = mcdi_rpc(CMD_GET_PHY_CFG, NULL, 0, out, CMD_GET_PHY_CFG_OUT_LEN, &outlen,
                  st->pci_function, st->d);
@@ -616,7 +616,7 @@ static void probe_all(struct sfn5122f_driver_state* st)
     memcpy(&(st->phy_loopback_mode), out+CMD_GET_LOOPBACK_MODES_SUGGESTED_OFFSET,4);
     // loopback mode NONE is no valid condition
     st->phy_loopback_mode &= ~(1);
-   
+
 
     // MAC STATS INIT
     st->mac_virt = alloc_map_frame(VREGION_FLAGS_READ_WRITE,
@@ -722,10 +722,10 @@ static void device_init(struct sfn5122f_driver_state* st)
     assert(err_is_ok(r));
 
     /* Set destination of TX/RX flush event */
-    
+
     sfn5122f_dp_ctrl_reg_lo_fls_evq_id_wrf(st->d, 0);
     sfn5122f_dp_ctrl_reg_hi_wr(st->d, sfn5122f_dp_ctrl_reg_hi_rd(st->d));
-  
+
     /* Disalbe user events for now     */
     sfn5122f_usr_ev_cfg_lo_usrev_dis_wrf(st->d , 1);
     sfn5122f_usr_ev_cfg_hi_wr(st->d, sfn5122f_usr_ev_cfg_hi_rd(st->d));
@@ -751,7 +751,7 @@ static void device_init(struct sfn5122f_driver_state* st)
     reg = sfn5122f_rx_dc_pf_wm_reg_lo_rx_dc_pf_lwm_insert(reg, RX_DESC_CACHE_SIZE -8);
     sfn5122f_rx_dc_pf_wm_reg_lo_wr(st->d, reg);
     sfn5122f_rx_dc_pf_wm_reg_hi_wr(st->d, sfn5122f_rx_dc_pf_wm_reg_hi_rd(st->d));
-   
+
    /*programm init ker address for interrupts */
     r = frame_identify(st->int_ker, &frameid);
     assert(err_is_ok(r));
@@ -771,14 +771,14 @@ static void device_init(struct sfn5122f_driver_state* st)
         reg = sfn5122f_int_adr_reg_ker_hi_norm_int_vec_dis_ker_insert(reg, 0);
     }
     sfn5122f_int_adr_reg_ker_hi_wr(st->d, reg);
-   
+
     /* Enable all the genuinley fatal interrupts */
     reg = sfn5122f_fatal_intr_reg_ker_lo_ill_adr_int_ker_en_insert(reg, 1);
     /* Enable rxbuf/txbuf interrupt  fields not documented.
        Set bits 39 and 38*/
     reg = sfn5122f_fatal_intr_reg_ker_lo_rxbuf_own_int_ker_en_insert(reg, 1);
     reg = sfn5122f_fatal_intr_reg_ker_lo_txbuf_own_int_ker_en_insert(reg, 1);
-    
+
     //reg = sfn5122f_fatal_intr_reg_ker_lo_sram_perr_int_p_ker_en_insert(reg, 1);
     sfn5122f_fatal_intr_reg_ker_lo_wr(st->d, ~reg);
     sfn5122f_fatal_intr_reg_ker_hi_wr(st->d, 0XFFFFFFFFFFFFFFFF);
@@ -805,7 +805,7 @@ static void device_init(struct sfn5122f_driver_state* st)
     reg = sfn5122f_tx_reserved_reg_lo_tx_pref_wd_tmr_insert(reg, 0x3fffff);
     /* Squash TX of packets of 16 bytes or less */
     reg = sfn5122f_tx_reserved_reg_lo_tx_flush_min_len_en_insert(reg, 1);
- 
+
     reg2 = sfn5122f_tx_reserved_reg_hi_rd(st->d);
     reg2 = sfn5122f_tx_reserved_reg_hi_tx_push_en_insert(reg2, 0);
     reg2 = sfn5122f_tx_reserved_reg_hi_tx_push_chk_dis_insert(reg2, 0);
@@ -822,7 +822,7 @@ static void device_init(struct sfn5122f_driver_state* st)
 static void start_all(struct sfn5122f_driver_state* st)
 {
     uint64_t reg;
- 
+
     start_port(st, st->pci_function);
 
     memset(st->int_ker_virt, 0, 2*sizeof(uint64_t));
@@ -848,7 +848,7 @@ static void start_all(struct sfn5122f_driver_state* st)
         err = driverkit_get_interrupt_cap(st->bfi, &intcap);
         assert(err_is_ok(err));
         err = int_route_client_route_and_connect(intcap, 0,
-                                                 get_default_waitset(), 
+                                                 get_default_waitset(),
                                                  global_interrupt_handler, st);
         if (err_is_fail(err)) {
             USER_PANIC("Interrupt setup failed!\n");
@@ -940,7 +940,7 @@ static void queue_hw_stop(struct queue_state* st, uint16_t n)
 
 
 
-static uint32_t init_evq(struct sfn5122f_driver_state* st, uint16_t n, 
+static uint32_t init_evq(struct sfn5122f_driver_state* st, uint16_t n,
                          lpaddr_t phys, bool interrupt)
 {
 
@@ -1005,7 +1005,7 @@ static uint32_t init_evq(struct sfn5122f_driver_state* st, uint16_t n,
     return buffer_offset;
 }
 
-static uint32_t init_rxq(struct sfn5122f_driver_state* st, uint16_t n, 
+static uint32_t init_rxq(struct sfn5122f_driver_state* st, uint16_t n,
                          lpaddr_t phys, bool userspace)
 {
     uint64_t reg_lo, reg_hi,  buffer_offset;
@@ -1035,7 +1035,7 @@ static uint32_t init_rxq(struct sfn5122f_driver_state* st, uint16_t n,
     reg_lo = sfn5122f_rx_desc_ptr_tbl_lo_rx_descq_buf_base_id_insert(reg_lo, buffer_offset);
     /*  Which event queue is associated with this queue*/
     reg_lo = sfn5122f_rx_desc_ptr_tbl_lo_rx_descq_evq_id_insert(reg_lo, n);
-    
+
     if (!userspace) {
         reg_lo = sfn5122f_rx_desc_ptr_tbl_lo_rx_descq_owner_id_insert(reg_lo, 0);
     } else {
@@ -1056,7 +1056,7 @@ static uint32_t init_rxq(struct sfn5122f_driver_state* st, uint16_t n,
     reg_lo = sfn5122f_rx_desc_ptr_tbl_lo_rx_descq_jumbo_insert(reg_lo, 0);
     /*  Enable queue */
     reg_lo = sfn5122f_rx_desc_ptr_tbl_lo_rx_descq_en_insert(reg_lo, 1);
-   
+
     /*   Hardware verifies data digest  */
     reg_hi = sfn5122f_rx_desc_ptr_tbl_hi_rx_iscsi_ddig_en_insert(reg_hi, 0);
     reg_hi = sfn5122f_rx_desc_ptr_tbl_hi_rx_iscsi_hdig_en_insert(reg_hi, 0);
@@ -1068,14 +1068,14 @@ static uint32_t init_rxq(struct sfn5122f_driver_state* st, uint16_t n,
 }
 
 
-static uint32_t init_txq(struct sfn5122f_driver_state* st, uint16_t n, 
+static uint32_t init_txq(struct sfn5122f_driver_state* st, uint16_t n,
                          uint64_t phys, bool csum, bool userspace)
 {
 
     uint64_t reg, reg1, buffer_offset;
-  
+
     buffer_offset = alloc_buf_tbl_entries(phys, NUM_ENT_TX, 0, 0, st->d);
-    
+
     if (buffer_offset == -1) {
        return -1;
     }
@@ -1108,9 +1108,9 @@ static uint32_t init_txq(struct sfn5122f_driver_state* st, uint16_t n,
 
     reg1 = sfn5122f_tx_desc_ptr_tbl_hi_tx_iscsi_ddig_en_insert(reg1, 0);
     reg1 = sfn5122f_tx_desc_ptr_tbl_hi_tx_iscsi_hdig_en_insert(reg1, 0);
-   
+
     reg1 = sfn5122f_tx_desc_ptr_tbl_hi_tx_non_ip_drop_dis_insert(reg1, 1);
- 
+
     /*   Enable queue  */
     reg1 = sfn5122f_tx_desc_ptr_tbl_hi_tx_descq_en_insert(reg1 , 1);
 
@@ -1119,12 +1119,12 @@ static uint32_t init_txq(struct sfn5122f_driver_state* st, uint16_t n,
     reg1 = sfn5122f_tx_desc_ptr_tbl_hi_tx_tcp_chksm_dis_insert(reg1, !csum);
     sfn5122f_tx_desc_ptr_tbl_lo_wr(st->d, n, reg);
     sfn5122f_tx_desc_ptr_tbl_hi_wr(st->d, n, reg1);
- 
+
     return buffer_offset;
 }
 
 
-static void setup_interrupt(struct sfn5122f_driver_state* st, size_t *msix_index, 
+static void setup_interrupt(struct sfn5122f_driver_state* st, size_t *msix_index,
                             uint8_t core, uint8_t vector)
 {
     bool res;
@@ -1239,7 +1239,7 @@ static void install_filter(struct net_filter_binding *b,
                            uint16_t dst_port)
 {
     errval_t err;
-    uint64_t fid;
+    uint64_t fid = 0;
     err = cb_install_filter(b, type, qid, src_ip, dst_ip, src_port, dst_port, &fid);
     assert(err_is_ok(err));
 
@@ -1313,7 +1313,7 @@ static errval_t net_filter_connect_cb(void *st, struct net_filter_binding *b)
     return SYS_ERR_OK;
 }
 
-static errval_t get_netfilter_ep(struct sfn5122f_driver_state* st, uint16_t qid, 
+static errval_t get_netfilter_ep(struct sfn5122f_driver_state* st, uint16_t qid,
                                  bool lmp, struct capref* ret_cap)
 {
     DEBUG("sfn5122f: Netfilter endpoint was requested \n");
@@ -1324,9 +1324,9 @@ static errval_t get_netfilter_ep(struct sfn5122f_driver_state* st, uint16_t qid,
         return err;
     }
 
-   // struct e10k_net_filter_state* state = malloc(sizeof(struct e10k_net_filter_state));  
+   // struct e10k_net_filter_state* state = malloc(sizeof(struct e10k_net_filter_state));
 
-    err = net_filter_create_endpoint(lmp? IDC_ENDPOINT_LMP: IDC_ENDPOINT_UMP, 
+    err = net_filter_create_endpoint(lmp? IDC_ENDPOINT_LMP: IDC_ENDPOINT_UMP,
                                      &net_filter_rx_vtbl, st,
                                      get_default_waitset(),
                                      IDC_ENDPOINT_FLAGS_DUMMY,
@@ -1350,7 +1350,7 @@ static errval_t get_netfilter_ep(struct sfn5122f_driver_state* st, uint16_t qid,
 static errval_t cd_create_queue_rpc(struct sfn5122f_devif_binding *b, struct capref frame,
                     bool user, bool interrupt, bool qzero,
                     uint8_t core, uint8_t msix_vector,
-                    uint64_t *mac, uint16_t *qid, struct capref* filter_ep, 
+                    uint64_t *mac, uint16_t *qid, struct capref* filter_ep,
                     struct capref *regs, errval_t *ret_err)
 {
 
@@ -1374,7 +1374,7 @@ static errval_t cd_create_queue_rpc(struct sfn5122f_devif_binding *b, struct cap
         *regs = NULL_CAP;
         return NIC_ERR_ALLOC_QUEUE;
     }
- 
+
     if (qzero) {
         if (st->queues[0].enabled == false) {
             n = 0;
@@ -1442,7 +1442,7 @@ static errval_t cd_create_queue_rpc(struct sfn5122f_devif_binding *b, struct cap
 
     *mac = st->d_mac[st->pci_function];
     *qid = n;
-    
+
     b->st = &(st->queues[n]);
 
     *regs = st->regframe;
@@ -1522,7 +1522,7 @@ static void cd_deregister_region(struct sfn5122f_devif_binding *b, uint64_t buft
     struct sfn5122f_driver_state* st = (struct sfn5122f_driver_state*) b->st;
     errval_t err;
     free_buf_tbl_entries(buftbl_id, size/BUF_SIZE, st->d);
-   
+
     err = b->tx_vtbl.deregister_region_response(b, NOP_CONT, SYS_ERR_OK);
     assert(err_is_ok(err));
 }
@@ -1803,7 +1803,7 @@ static errval_t init(struct bfdriver_instance *bfi, uint64_t flags, iref_t *dev)
     if (bfi->dstate == NULL) {
         return LIB_ERR_MALLOC_FAIL;
     }
-    
+
     assert(bfi->dstate != NULL);
     struct sfn5122f_driver_state* st = (struct sfn5122f_driver_state*) bfi->dstate;
     st->caps = bfi->caps;
@@ -1920,12 +1920,12 @@ static errval_t get_ep(struct bfdriver_instance* bfi, bool lmp, struct capref* r
     DEBUG("Endpoint was requested \n");
     errval_t err;
     struct sfn5122f_devif_binding* b;
-    err = sfn5122f_devif_create_endpoint(lmp? IDC_ENDPOINT_LMP: IDC_ENDPOINT_UMP, 
+    err = sfn5122f_devif_create_endpoint(lmp? IDC_ENDPOINT_LMP: IDC_ENDPOINT_UMP,
                                   &vtbl, bfi->dstate,
                                   get_default_waitset(),
                                   IDC_ENDPOINT_FLAGS_DUMMY,
                                   &b, *ret_cap);
-    
+
     return err;
 }
 
