@@ -153,8 +153,6 @@ errval_t vspace_add_vregion(struct vspace *vspace, struct vregion *region)
 errval_t vspace_remove_vregion(struct vspace *vspace, struct vregion* region)
 {
     assert(vspace != NULL);
-    struct vregion *walk = vspace->head;
-    struct vregion *prev = NULL;
 
     if (region->next) {
         region->next->prev = region->prev;
