@@ -16,6 +16,7 @@ DEFAULT_JOBS=4
 JOBS="$DEFAULT_JOBS"
 CACHEDIR="$HOME/.cache/barrelfish"
 HAGFISH_LOCATION="/home/netos/tftpboot/Hagfish.efi"
+DEFAULT_OPT_FLAGS="-O2 -g"
 
 # Don't override the default toolchain unless asked to.
 TOOLROOT=Nothing
@@ -39,6 +40,7 @@ usage() {
     echo "       <arch>."
     echo "   -r|--toolroot <path>: where should I look for toolchains (instead"
     echo "       of (/home/netos/tools)"
+    ecgi "   -f|--flags <flags>: the compiler flags to set (defaut $DEFAULT_OPT_FLAGS)"
     echo "   -j|--jobs: Number of parallel jobs to run (default $DEFAULT_JOBS)."
     echo "   --hagfish: Location of Hagfish boot loader (default $HAGFISH_LOCATION)."
     echo "   --cachedir: Cache directory (default $CACHEDIR)."
@@ -78,6 +80,10 @@ while test $# -ne 0; do
 	    ;;
 	"-i"|"--install-dir")
 	    INSTALLDIR="$2"
+        shift
+	    ;;
+	"-f"|"--flagsr")
+	    OPT_FLAGS="$2"
         shift
 	    ;;
 	"-s"|"--source-dir")
@@ -183,6 +189,18 @@ if test ! -d hake; then
     touch hake/.marker
 fi
 
+
+if test -z "$OPT_FLAGS"; then
+    OPT_FLAGS=$DEFAULT_OPT_FLAGS
+fi
+
+OPTIMIZATION_FLAGS="\"\""
+for f in $OPT_FLAGS; do
+    OPTIMIZATION_FLAGS="$OPTIMIZATION_FLAGS, \"$f\" "
+done
+
+echo "Optimization Flags: $OPT_FLAGS"
+
 echo "Setting up hake build directory..."
 if test ! -f hake/Config.hs; then
     echo "Bootstrapping Config.hs"
@@ -202,6 +220,7 @@ x86_toolspec     = $X86_TOOLSPEC
 k1om_toolspec    = $K1OM_TOOLSPEC
 cache_dir        = "$CACHEDIR"
 hagfish_location = "$HAGFISH_LOCATION"
+cOptFlags = [ $OPTIMIZATION_FLAGS ]
 EOF
 else
     echo "You already have Config.hs, leaving it as-is."
