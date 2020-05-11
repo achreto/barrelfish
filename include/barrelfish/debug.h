@@ -52,11 +52,12 @@ void user_panic_fn(const char *file, const char *func, int line,
                    const char *msg, ...)
     __attribute__((noreturn));
 
+
+# define DEBUG_ERR(err, msg...) debug_err(__FILE__, __func__, __LINE__, err, msg)
+
 #ifdef NDEBUG
-# define DEBUG_ERR(err, msg...) ((void)0)
 # define HERE ((void)0)
 #else
-# define DEBUG_ERR(err, msg...) debug_err(__FILE__, __func__, __LINE__, err, msg)
 # include <barrelfish/dispatch.h>
 # define HERE fprintf(stderr, "Disp %.*s.%u: %s, %s, %u\n", \
                         DISP_NAME_LEN, disp_name(), disp_get_core_id(), \
