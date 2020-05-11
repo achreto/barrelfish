@@ -1333,6 +1333,12 @@ errval_t pmap_x86_64_init(struct pmap *pmap, struct vspace *vspace,
         return err_push(err, LIB_ERR_PMAP_INIT);
     }
 
+#ifdef PMAP_VNODE_CACHE_ENABLED
+    x86->cached_ram_cap = NULL_CAP;
+    x86->cached_ram_offset = 0;
+    x86->cached_ram_size = 0;
+#endif
+
     x86->root.v.type = ObjType_VNode_x86_64_pml4;
     x86->root.v.is_vnode          = true;
     x86->root.v.cap       = vnode;

@@ -26,7 +26,7 @@
 /**
  * has_vnode() checks whether there exists any vnodes in `len` slots
  * starting from `entry` in vnode `root`, if `only_pages` is set, page table
- * vnodes are ignored 
+ * vnodes are ignored
  */
 bool has_vnode(struct vnode *root, uint32_t entry, size_t len,
                bool only_pages)
@@ -94,6 +94,120 @@ bool has_vnode(struct vnode *root, uint32_t entry, size_t len,
 }
 
 
+
+#ifdef PMAP_VNODE_CACHE_ENABLED
+
+
+#define NUM_VNODES_LOG2 8
+#define OBJBITS_VNODE_X86 12
+#define VNODE_ALLOC_BITS (OBJBITS_VNODE_X86 + NUM_VNODES_LOG2)
+
+#define NUM_MCN_LOG2 8
+#define OBJBITS_CNODE (8 + OBJBITS_CTE)
+#define MCN_ALLOC_BITS (OBJBITS_CNODE + NUM_MCN_LOG2)
+
+static errval_t vnode_create_cached(struct pmap_x86 *pmap, struct capref dest, enum objtype type)
+{
+    errval_t err;
+
+    if (capref_is_null(pmap->cached_ram_cap)) {
+        pmap->cached_ram_offset = 0;
+        pmap->cached_ram_size = (1ULL << VNODE_ALLOC_BITS);
+        err = ram_alloc(&pmap->cached_ram_cap, VNODE_ALLOC_BITS);
+        if (err_is_fail(err)) {
+            pmap->cached_ram_size = (1ULL << OBJBITS_VNODE_X86);
+            err = ram_alloc(&pmap->cached_ram_cap, OBJBITS_VNODE_X86);
+            if (err_is_fail(err)) {
+                return err_push(err, LIB_ERR_RAM_ALLOC);
+            }
+        }
+        //debug_printf("allocated cached ram %zu / %zu for vnode\n", pmap->cached_ram_offset, pmap->cached_ram_size);
+    } else {
+        //debug_printf("reusing cached ram %zu / %zu for vnode\n", pmap->cached_ram_offset, pmap->cached_ram_size);
+    }
+
+    err = cap_retype(dest, pmap->cached_ram_cap, pmap->cached_ram_offset, type, 1UL << OBJBITS_VNODE_X86, 1);
+    if (err_is_fail(err)) {
+        DEBUG_ERR(err, "failed to retype - %zu\n", pmap->cached_ram_offset);
+        return err_push(err, LIB_ERR_CAP_RETYPE);
+    }
+
+    pmap->cached_ram_offset += (1UL << OBJBITS_VNODE_X86);
+    if (pmap->cached_ram_offset == pmap->cached_ram_size) {
+        // no more space in the
+        cap_destroy(pmap->cached_ram_cap);
+        pmap->cached_ram_cap = NULL_CAP;
+    }
+
+    return SYS_ERR_OK;
+}
+
+#if GLOBAL_MCN
+
+
+
+static errval_t mcn_create_cached(struct pmap_x86 *pmap, struct vnode *newvnode)
+{
+    errval_t err;
+
+    if (capref_is_null(pmap->cached_mcn_cap)) {
+        pmap->cached_mcn_offset = 0;
+        pmap->cached_mcn_size = (1ULL << MCN_ALLOC_BITS);
+        err = ram_alloc(&pmap->cached_mcn_cap, MCN_ALLOC_BITS);
+        if (err_is_fail(err)) {
+            debug_printf("allocation failed... falling back to default alloc\n");
+            /* allocate mapping cnodes */
+            for (int i = 0; i < MCN_COUNT; i++) {
+                err = cnode_create_l2(&newvnode->u.vnode.mcn[i], &newvnode->u.vnode.mcnode[i]);
+                if (err_is_fail(err)) {
+                    return err_push(err, LIB_ERR_PMAP_ALLOC_CNODE);
+                }
+            }
+
+            return SYS_ERR_OK;
+        }
+        // debug_printf("allocated cached ram %zu / %zu for mcn\n", pmap->cached_mcn_offset, pmap->cached_mcn_size);
+    } else {
+        // debug_printf("reusing cached ram %zu / %zu for mcn\n", pmap->cached_mcn_offset, pmap->cached_mcn_size);
+    }
+
+
+    /* allocate mapping cnodes */
+    for (int i = 0; i < MCN_COUNT; i++) {
+
+        err = slot_alloc_root(&newvnode->u.vnode.mcn[i]);
+        if (err_is_fail(err)) {
+            DEBUG_ERR(err, "slot_alloc_root");
+            return err_push(err, LIB_ERR_SLOT_ALLOC);
+        }
+
+
+        // Retype it to the destination
+        err = cap_retype(newvnode->u.vnode.mcn[i], pmap->cached_mcn_cap, pmap->cached_mcn_offset, ObjType_L2CNode,
+                         L2_CNODE_SLOTS * (1UL << OBJBITS_CTE), 1);
+        if (err_is_fail(err)) {
+            return err_push(err, LIB_ERR_CAP_RETYPE);
+        }
+
+        newvnode->u.vnode.mcnode[i] = build_cnoderef(newvnode->u.vnode.mcn[i], CNODE_TYPE_OTHER);
+
+        pmap->cached_mcn_offset += L2_CNODE_SLOTS * (1UL << OBJBITS_CTE);
+    }
+
+    if (pmap->cached_mcn_offset == pmap->cached_mcn_size) {
+        cap_destroy(pmap->cached_mcn_cap);
+        pmap->cached_mcn_cap = NULL_CAP;
+    }
+    return SYS_ERR_OK;
+}
+
+#endif
+
+
+#endif
+
+
+
 /**
  * \brief Allocates a new VNode, adding it to the page table and our metadata
  */
@@ -115,7 +229,12 @@ errval_t alloc_vnode(struct pmap_x86 *pmap, struct vnode *root,
     }
     pmap->used_cap_slots ++;
 
+#ifdef PMAP_VNODE_CACHE_ENABLED
+    err = vnode_create_cached(pmap, newvnode->v.cap, type);
+    //err = vnode_create(newvnode->v.cap, type);
+#else
     err = vnode_create(newvnode->v.cap, type);
+#endif
     if (err_is_fail(err)) {
         return err_push(err, LIB_ERR_VNODE_CREATE);
     }
@@ -160,6 +279,12 @@ errval_t alloc_vnode(struct pmap_x86 *pmap, struct vnode *root,
     newvnode->u.vnode.base = base;
 
 #if GLOBAL_MCN
+#ifdef PMAP_VNODE_CACHE_ENABLED
+    err = mcn_create_cached(pmap, newvnode);
+    if (err_is_fail(err)) {
+        return err_push(err, LIB_ERR_PMAP_ALLOC_CNODE);
+    }
+#else
     /* allocate mapping cnodes */
     for (int i = 0; i < MCN_COUNT; i++) {
         err = cnode_create_l2(&newvnode->u.vnode.mcn[i], &newvnode->u.vnode.mcnode[i]);
@@ -167,6 +292,7 @@ errval_t alloc_vnode(struct pmap_x86 *pmap, struct vnode *root,
             return err_push(err, LIB_ERR_PMAP_ALLOC_CNODE);
         }
     }
+#endif
 #endif
 
     *retvnode = newvnode;
@@ -176,6 +302,7 @@ errval_t alloc_vnode(struct pmap_x86 *pmap, struct vnode *root,
 void remove_empty_vnodes(struct pmap_x86 *pmap, struct vnode *root,
                          uint32_t entry, size_t len)
 {
+    return;
     errval_t err;
     uint32_t end_entry = entry + len;
     struct vnode *n;
@@ -315,7 +442,7 @@ errval_t pmap_x86_determine_addr(struct pmap *pmap, struct memobj *memobj,
     vaddr = ROUND_UP((vregion_get_base_addr(walk)
                       + ROUND_UP(vregion_get_size(walk), BASE_PAGE_SIZE)),
                      alignment);
- 
+
  out:
     // Ensure that we haven't run out of address space
     if (vaddr + memobj->size > pmapx->max_mappable_va) {
