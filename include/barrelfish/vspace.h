@@ -23,6 +23,7 @@ struct vspace {
     struct pmap *pmap;           ///< Pmap associated with the vspace
     struct vspace_layout layout; ///< The layout of the address space
     struct vregion *head;        ///< List of vregions in the vspace
+    struct vregion *last;        ///< last elemenet of vregions in the vspace
 };
 
 /**

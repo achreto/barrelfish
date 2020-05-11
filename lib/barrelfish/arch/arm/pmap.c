@@ -1269,6 +1269,7 @@ errval_t pmap_current_init(bool init_domain)
     struct vspace *vspace = pmap_arm->p.vspace;
     assert(!vspace->head);
     vspace->head = vregion;
+    vspace->last = vregion;
 
     pmap_arm->vregion_offset = pmap_arm->vregion.base;
 

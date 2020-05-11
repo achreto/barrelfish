@@ -55,6 +55,7 @@ struct vregion {
     genvaddr_t base;         ///< Base address of the vregion
     vregion_flags_t flags;   ///< Flags
     struct vregion *next;    ///< Pointer for the list in vspace
+    struct vregion *prev;    ///< Pointer for the list in vspace
 };
 
 /**

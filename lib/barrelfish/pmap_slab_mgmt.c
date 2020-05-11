@@ -218,6 +218,7 @@ errval_t pmap_vnode_mgmt_current_init(struct pmap *pmap)
     struct vspace *vspace = pmap->vspace;
     assert(!vspace->head);
     vspace->head = vregion;
+    vspace->last = vregion;
 
     pmap->m.vregion_offset = pmap->m.vregion.base;
 

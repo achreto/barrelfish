@@ -38,6 +38,7 @@ errval_t vspace_current_init(bool init_domain)
 
     vspace->pmap = pmap;
     vspace->head = NULL;
+    vspace->last = NULL;
 
     // Setup the layout
     err = vspace_layout_init(&vspace->layout);
@@ -83,8 +84,25 @@ errval_t vspace_add_vregion(struct vspace *vspace, struct vregion *region)
     assert(region->base + region->size > region->base);
 
     if (vspace->head == NULL) {
+        assert(vspace->last == NULL);
         vspace->head = region;
+        vspace->last = region;
         region->next = NULL;
+
+        return SYS_ERR_OK;
+    }
+
+    if (vspace->last->base < region->base) {
+        if ((vspace->last->base + vspace->last->size) > region->base) {
+            return LIB_ERR_VSPACE_REGION_OVERLAP;
+        }
+        region->next = NULL;
+        region->prev = vspace->last;
+
+        vspace->last->next = region;
+
+        vspace->last = region;
+
         return SYS_ERR_OK;
     }
 
@@ -101,11 +119,16 @@ errval_t vspace_add_vregion(struct vspace *vspace, struct vregion *region)
 
             /* add here */
             if (prev == NULL) {
+                vspace->head->prev = region;
                 region->next = vspace->head;
+                region->prev = NULL;
+
                 vspace->head = region;
             } else {
                 prev->next = region;
+                walk->prev = region;
                 region->next = walk;
+                region->prev = prev;
             }
             return SYS_ERR_OK;
         }
@@ -114,13 +137,8 @@ errval_t vspace_add_vregion(struct vspace *vspace, struct vregion *region)
         walk = walk->next;
     }
 
-    /* add to end of list, checking for overlap with last item */
-    assert(prev != NULL);
-    if (prev->base + prev->size > region->base) {
-        return LIB_ERR_VSPACE_REGION_OVERLAP;
-    }
-    prev->next = region;
-    region->next = NULL;
+    USER_PANIC("SHOULD NOT REACH HERE!\n");
+
     return SYS_ERR_OK;
 }
 
@@ -138,22 +156,23 @@ errval_t vspace_remove_vregion(struct vspace *vspace, struct vregion* region)
     struct vregion *walk = vspace->head;
     struct vregion *prev = NULL;
 
-    while (walk) {
-        if (walk == region) {
-            if (prev) {
-                assert(prev->next == walk);
-                prev->next = walk->next;
-            } else {
-                assert(walk == vspace->head);
-                vspace->head = walk->next;
-            }
-            return SYS_ERR_OK;
-        }
-        prev = walk;
-        walk = walk->next;
+    if (region->next) {
+        region->next->prev = region->prev;
+    } else {
+        assert(vspace->last = region);
+        if (vspace->last != region) {USER_PANIC("last was not region");}
+        vspace->last = region->prev;
     }
 
-    return LIB_ERR_VREGION_NOT_FOUND;
+    if (region->prev) {
+        region->prev->next = region->next;
+    } else {
+        vspace->head = region->next;
+        assert(vspace->head = region);
+        if (vspace->head != region) {USER_PANIC("head was not region");}
+    }
+
+    return SYS_ERR_OK;
 }
 
 /**
@@ -170,6 +189,7 @@ errval_t vspace_init(struct vspace *vspace, struct pmap *pmap)
 
     vspace->pmap = pmap;
     vspace->head = NULL;
+    vspace->last = NULL;
 
     // Setup the layout
     err = vspace_layout_init(&vspace->layout);

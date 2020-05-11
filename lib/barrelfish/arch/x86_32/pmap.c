@@ -959,6 +959,7 @@ errval_t pmap_x86_32_current_init(bool init_domain)
     struct vspace *vspace = x86->p.vspace;
     assert(!vspace->head);
     vspace->head = vregion;
+    vspace->last = vregion;
 
     x86->vregion_offset = x86->vregion.base;
 
