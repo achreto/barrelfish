@@ -124,6 +124,26 @@ while test $# != 0; do
     shift
 done
 
+
+HUGEMEMOBJ=""
+if [ -d /sys/kernel/mm/hugepages/hugepages-1048576kB ]; then
+	NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
+	if [[ $NR_HUGEPAGES > 0 ]]; then
+		echo "USING HUGE MEM OPTION 1GB"
+		HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=1G"
+	fi
+elif [ -d /sys/kernel/mm/hugepages/hugepages-2048kB ]; then
+	NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages )
+	if [[ $NR_HUGEPAGES > 0 ]]; then
+                echo "USING HUGE MEM OPTION 2MB"
+                HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=2M"
+        fi
+else
+	echo "NO HUGEPAGES AVAILABLE"
+fi
+
+echo $KVM
+
 if test -z "$IMAGE"; then
     if test -z "$MENUFILE"; then
         echo "No menu.lst file specified."
@@ -192,7 +212,7 @@ case "$ARCH" in
     QEMU_CMD="${QEMU_PATH}qemu-system-x86_64 \
         -machine type=q35 \
         -smp ${SMP} \
-        -m ${MEMORY} \
+        -m ${MEMORY} ${HUGEMEMOBJ} \
         ${KVM} \
         -cpu host,migratable=no,+invtsc,+tsc,+x2apic,+fsgsbase \
         -netdev user,id=network0 \
