@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+
 ##########################################################################
 # Copyright (c) 2009-2015 ETH Zurich.
 # All rights reserved.
@@ -128,22 +129,30 @@ done
 echo "Checking HUGEPAGE availability"
 HUGEMEMOBJ=""
 if [ -d /sys/kernel/mm/hugepages/hugepages-1048576kB ]; then
-	NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
-	if [[ $NR_HUGEPAGES > 0 ]]; then
-		echo "USING HUGE MEM OPTION 1GB"
-		HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=1G"
-	fi
-elif [ -d /sys/kernel/mm/hugepages/hugepages-2048kB ]; then
-	NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages )
-	if [[ $NR_HUGEPAGES > 0 ]]; then
-                echo "USING HUGE MEM OPTION 2MB"
-                HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=2M"
-        fi
-else
+    NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
+    if [[ $NR_HUGEPAGES > 0 ]]; then
+        echo "USING HUGE MEM OPTION 1GB"
+        HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=1G"
+    else
+        echo "NOT USING HUGE MEM OPTION 1GB"
+    fi
+fi
+
+if [ -d /sys/kernel/mm/hugepages/hugepages-2048kB ]; then
+    NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages)
+    if [[ $NR_HUGEPAGES > 0 && "$HUGEMEMOBJ" = "" ]]; then
+        echo "USING HUGE MEM OPTION 2MB"
+        HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=2M"
+    else
+        echo "NOT USING HUGE MEM OPTION 2MB"
+    fi
+fi
+
+if [[ "$HUGEMEMOBJ" = "" ]]; then
 	echo "NO HUGEPAGES AVAILABLE"
 fi
 
-echo $KVM
+echo "KVM is $KVM"
 
 if test -z "$IMAGE"; then
     if test -z "$MENUFILE"; then
