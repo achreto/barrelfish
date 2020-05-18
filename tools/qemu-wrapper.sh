@@ -124,7 +124,8 @@ while test $# != 0; do
     shift
 done
 
-
+# this needs to be here for the runscript to work
+echo "Checking HUGEPAGE availability"
 HUGEMEMOBJ=""
 if [ -d /sys/kernel/mm/hugepages/hugepages-1048576kB ]; then
 	NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
