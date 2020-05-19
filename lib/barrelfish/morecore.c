@@ -48,7 +48,7 @@ static void *morecore_alloc(size_t bytes, size_t *retbytes)
     struct ram_alloc_state *ram_alloc_state = get_ram_alloc_state();
     if(ram_alloc_state->ram_alloc_func != ram_alloc_fixed) {
         if (bytes < LARGE_PAGE_SIZE) {
-            bytes = LARGE_PAGE_SIZE;
+            bytes = 4*LARGE_PAGE_SIZE;
         }
 
         bytes = ROUND_UP(bytes, LARGE_PAGE_SIZE);
