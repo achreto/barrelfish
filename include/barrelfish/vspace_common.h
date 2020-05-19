@@ -70,6 +70,10 @@ errval_t vspace_map_one_frame(void **retaddr, size_t size, struct capref frame,
 errval_t vspace_map_one_frame_one_map(struct memobj_one_frame_one_map *memobj,
                                       struct vregion *vregion, size_t size,
                                       struct capref frame);
+errval_t vspace_map_one_frame_one_map_fixed_attr(lvaddr_t addr, size_t size,
+                                    struct capref frame, vregion_flags_t flags,
+                                    struct memobj **retmemobj,
+                                    struct vregion **retvregion);
 
 errval_t vspace_map_one_frame_fixed(lvaddr_t addr, size_t size,
                                     struct capref frame,
