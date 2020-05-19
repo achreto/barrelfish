@@ -476,94 +476,79 @@ errval_t vspace_map_one_frame_one_map(struct memobj_one_frame_one_map *memobj,
 }
 
 
-/// POORMANS's SLABS...
-void *vregion_buf = NULL;
-void *vregion_buf_end = NULL;
-#define NUM_VREGION_BUF 2000
-#define VREGION_BUF_ELM_SIZE (sizeof(struct  memobj_one_frame_one_map) + sizeof(struct vregion))
+errval_t vspace_map_one_frame_one_map_fixed_attr_no_malloc(lvaddr_t addr, size_t size,
+                                    struct capref frame, vregion_flags_t flags,
+                                    struct memobj_one_frame_one_map *memobj,
+                                    struct vregion *vregion)
+{
+    errval_t err;
+
+    // Create mappings
+    err = memobj_create_one_frame_one_map(memobj, size, 0);
+    if (err_is_fail(err)) {
+        return err_push(err, LIB_ERR_MEMOBJ_CREATE_ONE_FRAME);
+    }
+
+    err = memobj->m.f.fill(&memobj->m, 0, frame, size);
+    if (err_is_fail(err)) {
+        return err_push(err, LIB_ERR_MEMOBJ_FILL);
+    }
+
+    err = vregion_map_fixed(vregion, get_current_vspace(), &memobj->m, 0, size, addr, flags);
+    if (err_is_fail(err)) {
+        return err_push(err, LIB_ERR_VREGION_MAP);
+    }
+
+    err = memobj->m.f.pagefault(&memobj->m, vregion, 0, 0);
+    if (err_is_fail(err)) {
+        err = err_push(err, LIB_ERR_MEMOBJ_PAGEFAULT_HANDLER);
+        vregion_destroy(vregion);
+    }
+
+    return err;
+}
+
 
 errval_t vspace_map_one_frame_one_map_fixed_attr(lvaddr_t addr, size_t size,
                                     struct capref frame, vregion_flags_t flags,
                                     struct memobj **retmemobj,
                                     struct vregion **retvregion)
 {
-    errval_t err1, err2;
-    struct memobj *memobj   = NULL;
+    errval_t err;
+
+    struct memobj_one_frame_one_map *memobj   = NULL;
     struct vregion *vregion = NULL;
 
     size = ROUND_UP(size, BASE_PAGE_SIZE);
 
-    if (vregion_buf == NULL) {
-       // debug_printf("refill: %lu\n", NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
-        vregion_buf = malloc(NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
-        if (vregion_buf == NULL) {
-            err1 = LIB_ERR_MALLOC_FAIL;
-            goto error;
-        }
-
-        vregion_buf_end = vregion_buf + (NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
+    // Allocate space
+    memobj = calloc(1, sizeof(struct memobj_one_frame_one_map));
+    if (!memobj) {
+        return LIB_ERR_MALLOC_FAIL;
     }
 
-    memobj = (struct memobj *)vregion_buf;
-    vregion = (struct vregion *)((char *)memobj + sizeof(struct  memobj_one_frame_one_map));
-
-    vregion_buf += VREGION_BUF_ELM_SIZE;
-    if (vregion_buf == vregion_buf_end) {
-        vregion_buf = NULL;
-        vregion_buf_end = NULL;
+    vregion = calloc(1, sizeof(struct vregion));
+    if (!vregion) {
+        free(memobj);
+        return LIB_ERR_MALLOC_FAIL;
     }
 
-    // Create mappings
-    err1 = memobj_create_one_frame_one_map((struct memobj_one_frame_one_map*)memobj, size, 0);
-    if (err_is_fail(err1)) {
-        err1 = err_push(err1, LIB_ERR_MEMOBJ_CREATE_ONE_FRAME);
-        goto error;
-    }
-
-    err1 = memobj->f.fill(memobj, 0, frame, size);
-    if (err_is_fail(err1)) {
-        err1 = err_push(err1, LIB_ERR_MEMOBJ_FILL);
-        goto error;
-    }
-
-
-
-    err1 = vregion_map_fixed(vregion, get_current_vspace(), memobj, 0, size, addr, flags);
-    if (err_is_fail(err1)) {
-        err1 = err_push(err1, LIB_ERR_VREGION_MAP);
-        goto error;
-    }
-
-    err1 = memobj->f.pagefault(memobj, vregion, 0, 0);
-    if (err_is_fail(err1)) {
-        err1 = err_push(err1, LIB_ERR_MEMOBJ_PAGEFAULT_HANDLER);
-        goto error;
+    err = vspace_map_one_frame_one_map_fixed_attr_no_malloc(addr, size, frame, flags, memobj, vregion);
+    if (err_is_fail(err)) {
+        free(memobj);
+        free(vregion);
+        return err;
     }
 
     if (retmemobj) {
-        *retmemobj = memobj;
+        *retmemobj = &memobj->m;
     }
+
     if (retvregion) {
         *retvregion = vregion;
     }
+
     return SYS_ERR_OK;
-
- error:
-    if (memobj) {
-        err2 = memobj_destroy_one_frame(memobj);
-        if (err_is_fail(err2)) {
-            DEBUG_ERR(err2, "memobj_destroy_anon failed");
-        }
-    }
-    if (vregion) {
-        err2 = vregion_destroy(vregion);
-        if (err_is_fail(err2)) {
-            DEBUG_ERR(err2, "vregion_destroy failed");
-        }
-    }
-
-    DEBUG_ERR(err1, "failed to map...\n");
-    return err1;
 }
 
 
