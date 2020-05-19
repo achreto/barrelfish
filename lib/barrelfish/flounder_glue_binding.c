@@ -18,7 +18,8 @@
 
 void messages_wait_and_handle_next(void)
 {
-    errval_t err = event_dispatch(get_default_waitset());
+    struct waitset *ws = get_default_waitset();
+    errval_t err = event_dispatch(ws);
     if (err_is_fail(err)) {
         USER_PANIC_ERR(err, "error in event_dispatch for messages_wait_and_handle_next hack");
     }
