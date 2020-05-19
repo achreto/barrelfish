@@ -105,7 +105,7 @@ static errval_t refill_slabs(struct pmap *pmap, struct slab_allocator *slab, siz
         size_t slabs_req = request - slab_freecount(slab);
         size_t bytes = SLAB_STATIC_SIZE(slabs_req,
                                         slab->blocksize);
-        bytes = ROUND_UP(bytes, BASE_PAGE_SIZE);
+        bytes = ROUND_UP(bytes, LARGE_PAGE_SIZE);
 
         if (debug_refill) {
         debug_printf("%s: req=%zu, bytes=%zu, slab->blocksize=%zu, slab->freecount=%zu\n",
