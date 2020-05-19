@@ -81,8 +81,10 @@ static errval_t create_mlx4_queue(const char* cardname, inthandler_t interrupt,
                                   bool default_q, bool poll, struct capref* filter_ep,
                                   struct devq **retqueue)
 {
+    debug_printf("WARINGI:::NYI\n");
+    return SYS_ERR_OK;
+#if 0
     errval_t err;
-
     struct pci_addr addr;
     struct pci_id id;
     struct pci_class cls;
@@ -107,6 +109,7 @@ static errval_t create_mlx4_queue(const char* cardname, inthandler_t interrupt,
     *filter_ep = NULL_CAP;
     return mlx4_queue_create((struct mlx4_queue**)retqueue, id.vendor, id.device,
                               addr.bus, addr.device, addr.function, 1, interrupt);
+#endif                              
 }
 
 static errval_t create_e10k_queue(const char* cardname, inthandler_t interrupt,
