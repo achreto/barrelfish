@@ -132,7 +132,7 @@ if [ -d /sys/kernel/mm/hugepages/hugepages-1048576kB ]; then
     NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages)
     if [[ $NR_HUGEPAGES > 0 ]]; then
         echo "USING HUGE MEM OPTION 1GB"
-        HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=1G"
+    #    HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=1G"
     else
         echo "NOT USING HUGE MEM OPTION 1GB"
     fi
@@ -142,7 +142,7 @@ if [ -d /sys/kernel/mm/hugepages/hugepages-2048kB ]; then
     NR_HUGEPAGES=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages)
     if [[ $NR_HUGEPAGES > 0 && "$HUGEMEMOBJ" = "" ]]; then
         echo "USING HUGE MEM OPTION 2MB"
-        HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=2M"
+    #    HUGEMEMOBJ="-object memory-backend-memfd,id=barrelfish-qemu,merge=off,dump=off,share=off,prealloc=on,size=${MEMORY},policy=default,seal=on,hugetlb=on,hugetlbsize=2M"
     else
         echo "NOT USING HUGE MEM OPTION 2MB"
     fi
@@ -153,6 +153,7 @@ if [[ "$HUGEMEMOBJ" = "" ]]; then
 fi
 
 echo "KVM is $KVM"
+
 
 if test -z "$IMAGE"; then
     if test -z "$MENUFILE"; then
@@ -361,7 +362,7 @@ fi
 
 echo $QEMU_INVOCATION
 set -x
-
+exit 0
 eval $QEMU_INVOCATION
 
 if test $? -eq 0; then
