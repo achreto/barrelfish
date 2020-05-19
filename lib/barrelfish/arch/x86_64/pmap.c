@@ -37,6 +37,12 @@
 #include <trace/trace.h>
 #include <trace_definitions/trace_defs.h>
 
+
+//#define CHECK_FRAME_SIZE
+#define CHECK_FRAME_SIZE_ALIGN(_fi, mask, offset, size) true
+
+
+
 /**
  * \brief Translate generic vregion flags to architecture specific pmap flags
  */
@@ -300,7 +306,8 @@ static errval_t do_single_map(struct pmap_x86 *pmap, genvaddr_t vaddr,
     }
     assert(ptable->v.is_vnode);
 
-    // check if there is an overlapping mapping
+#ifndef NDEBUG
+    //check if there is an overlapping mapping
     if (has_vnode(ptable, table_base, pte_count, false)) {
         if (has_vnode(ptable, table_base, pte_count, true)) {
             printf("page already exists in 0x%"
@@ -310,9 +317,11 @@ static errval_t do_single_map(struct pmap_x86 *pmap, genvaddr_t vaddr,
             // clean out empty page tables. We do this here because we benefit
             // from having the page tables in place when doing lots of small
             // mappings
-            remove_empty_vnodes(pmap, ptable, table_base, pte_count);
+            //remove_empty_vnodes(pmap, ptable, table_base, pte_count);
         }
     }
+#endif
+
 
     // setup userspace mapping
     struct vnode *page = slab_alloc(&pmap->p.m.slab);
@@ -362,6 +371,7 @@ errval_t do_map(struct pmap *pmap_gen, genvaddr_t vaddr,
     uint8_t map_bits  = X86_64_BASE_PAGE_BITS + X86_64_PTABLE_BITS;
     bool debug_out    = false;
 
+#ifndef CHECK_FRAME_SIZE
     // get base address and size of frame
     struct frame_identity fi;
     err = cap_identify_mappable(frame, &fi);
@@ -369,12 +379,11 @@ errval_t do_map(struct pmap *pmap_gen, genvaddr_t vaddr,
         trace_event(TRACE_SUBSYS_MEMORY, TRACE_EVENT_MEMORY_DO_MAP, 1);
         return err_push(err, LIB_ERR_PMAP_FRAME_IDENTIFY);
     }
+#endif
 
     if ((flags & VREGION_FLAGS_HUGE) &&
         (vaddr & X86_64_HUGE_PAGE_MASK) == 0 &&
-        fi.bytes >= X86_64_HUGE_PAGE_SIZE &&
-        ((fi.base & X86_64_HUGE_PAGE_MASK) == 0))
-    {
+        CHECK_FRAME_SIZE_ALIGN(fi, X86_64_HUGE_PAGE_SIZE, 0, X86_64_HUGE_PAGE_SIZE)) {
         // huge page branch (1GB)
         page_size  = X86_64_HUGE_PAGE_SIZE;
         table_base = X86_64_PDPT_BASE(vaddr);
@@ -384,9 +393,7 @@ errval_t do_map(struct pmap *pmap_gen, genvaddr_t vaddr,
         flags     &= ~VREGION_FLAGS_LARGE;
     } else if ((flags & VREGION_FLAGS_LARGE) &&
                (vaddr & X86_64_LARGE_PAGE_MASK) == 0 &&
-               fi.bytes >= X86_64_LARGE_PAGE_SIZE &&
-               ((fi.base & X86_64_LARGE_PAGE_MASK) == 0))
-    {
+               CHECK_FRAME_SIZE_ALIGN(fi, X86_64_LARGE_PAGE_MASK, 0, X86_64_LARGE_PAGE_SIZE)) {
         // large page branch (2MB)
         page_size  = X86_64_LARGE_PAGE_SIZE;
         table_base = X86_64_PDIR_BASE(vaddr);
@@ -402,13 +409,14 @@ errval_t do_map(struct pmap *pmap_gen, genvaddr_t vaddr,
     size_t pte_count = DIVIDE_ROUND_UP(size, page_size);
     genvaddr_t vend = vaddr + size;
 
+#ifndef CHECK_FRAME_SIZE
     if (offset+size > fi.bytes) {
         debug_printf("do_map: offset=%zu; size=%zu; frame size=%zu\n",
                 offset, size, fi.bytes);
         trace_event(TRACE_SUBSYS_MEMORY, TRACE_EVENT_MEMORY_DO_MAP, 1);
         return LIB_ERR_PMAP_FRAME_SIZE;
     }
-
+#endif
 #if 0
     if (true || debug_out) {
         genpaddr_t paddr = fi.base + offset;
@@ -552,6 +560,7 @@ static errval_t map(struct pmap *pmap, genvaddr_t vaddr, struct capref frame,
 {
     errval_t err;
 
+#ifdef CHECK_FRAME_SIZE
     struct capability cap;
     err = cap_direct_identify(frame, &cap);
     if (err_is_fail(err)) {
@@ -560,6 +569,7 @@ static errval_t map(struct pmap *pmap, genvaddr_t vaddr, struct capref frame,
     struct frame_identity fi;
     fi.base = get_address(&cap);
     fi.bytes = get_size(&cap);
+#endif
 
     size_t max_slabs;
     // Adjust the parameters to page boundaries
@@ -568,8 +578,7 @@ static errval_t map(struct pmap *pmap, genvaddr_t vaddr, struct capref frame,
     // branching
     if ((flags & VREGION_FLAGS_LARGE) &&
         (vaddr & X86_64_LARGE_PAGE_MASK) == 0 &&
-        (fi.base & X86_64_LARGE_PAGE_MASK) == 0 &&
-        fi.bytes >= offset+size) {
+        CHECK_FRAME_SIZE_ALIGN(fi, X86_64_LARGE_PAGE_MASK, offset, size)) {
         //case large pages (2MB)
         size   += LARGE_PAGE_OFFSET(offset);
         size    = ROUND_UP(size, LARGE_PAGE_SIZE);
@@ -577,8 +586,7 @@ static errval_t map(struct pmap *pmap, genvaddr_t vaddr, struct capref frame,
         max_slabs = max_slabs_for_mapping_large(size);
     } else if ((flags & VREGION_FLAGS_HUGE) &&
                (vaddr & X86_64_HUGE_PAGE_MASK) == 0 &&
-               (fi.base & X86_64_HUGE_PAGE_MASK) == 0 &&
-               fi.bytes >= offset+size) {
+               CHECK_FRAME_SIZE_ALIGN(fi, X86_64_HUGE_PAGE_MASK, offset, size)) {
         // case huge pages (1GB)
         size   += HUGE_PAGE_OFFSET(offset);
         size    = ROUND_UP(size, HUGE_PAGE_SIZE);
