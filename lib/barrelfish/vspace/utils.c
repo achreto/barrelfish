@@ -494,7 +494,7 @@ errval_t vspace_map_one_frame_one_map_fixed_attr(lvaddr_t addr, size_t size,
     size = ROUND_UP(size, BASE_PAGE_SIZE);
 
     if (vregion_buf == NULL) {
-        debug_printf("refill: %lu\n", NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
+       // debug_printf("refill: %lu\n", NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
         vregion_buf = malloc(NUM_VREGION_BUF * VREGION_BUF_ELM_SIZE);
         if (vregion_buf == NULL) {
             err1 = LIB_ERR_MALLOC_FAIL;
