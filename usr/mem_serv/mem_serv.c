@@ -116,6 +116,23 @@ static errval_t mymm_alloc(struct capref *ret, uint8_t bits, genpaddr_t minbase,
     return err;
 }
 
+
+static errval_t memserv_alloc(struct capref *ret, uint8_t bits, genpaddr_t minbase,
+                           genpaddr_t maxlimit)
+{
+    errval_t err;
+
+    assert(bits >= MINSIZEBITS);
+
+    if(maxlimit == 0) {
+        err = mm_alloc(&mm_ram, bits, ret, NULL);
+    } else {
+        err = mm_alloc_range(&mm_ram, bits, minbase, maxlimit, ret, NULL);
+    }
+
+    return err;
+}
+
 static errval_t mymm_free(struct capref ramcap, genpaddr_t base, uint8_t bits)
 {
     errval_t ret;
@@ -628,7 +645,7 @@ int main(int argc, char ** argv)
     }
 
     /* Initialize our own memory allocator */
-    err = ram_alloc_set(mymm_alloc);
+    err = ram_alloc_set(memserv_alloc);
     if(err_is_fail(err)) {
         USER_PANIC_ERR(err, "ram_alloc_set");
     }
