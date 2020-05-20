@@ -98,13 +98,13 @@ bool has_vnode(struct vnode *root, uint32_t entry, size_t len,
 #ifdef PMAP_VNODE_CACHE_ENABLED
 
 
-#define NUM_VNODES_LOG2 8
+#define NUM_VNODES_LOG2 3
 #define OBJBITS_VNODE_X86 12
-#define VNODE_ALLOC_BITS (OBJBITS_VNODE_X86 + NUM_VNODES_LOG2)
+#define VNODE_ALLOC_BITS 21  ///< always get 2MB worth of ram
 
-#define NUM_MCN_LOG2 8
+#define NUM_MCN_LOG2 3
 #define OBJBITS_CNODE (8 + OBJBITS_CTE)
-#define MCN_ALLOC_BITS (OBJBITS_CNODE + NUM_MCN_LOG2)
+#define MCN_ALLOC_BITS 21  ///< always get 2MB worth of ram
 
 static errval_t vnode_create_cached(struct pmap_x86 *pmap, struct capref dest, enum objtype type)
 {
@@ -155,7 +155,6 @@ static errval_t mcn_create_cached(struct pmap_x86 *pmap, struct vnode *newvnode)
         pmap->cached_mcn_size = (1ULL << MCN_ALLOC_BITS);
         err = ram_alloc(&pmap->cached_mcn_cap, MCN_ALLOC_BITS);
         if (err_is_fail(err)) {
-            //debug_printf("allocation failed... falling back to default alloc\n");
             /* allocate mapping cnodes */
             for (int i = 0; i < MCN_COUNT; i++) {
                 err = cnode_create_l2(&newvnode->u.vnode.mcn[i], &newvnode->u.vnode.mcnode[i]);

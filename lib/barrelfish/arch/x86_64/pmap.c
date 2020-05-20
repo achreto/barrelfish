@@ -306,7 +306,6 @@ static errval_t do_single_map(struct pmap_x86 *pmap, genvaddr_t vaddr,
     }
     assert(ptable->v.is_vnode);
 
-#ifndef NDEBUG
     //check if there is an overlapping mapping
     if (has_vnode(ptable, table_base, pte_count, false)) {
         if (has_vnode(ptable, table_base, pte_count, true)) {
@@ -320,8 +319,6 @@ static errval_t do_single_map(struct pmap_x86 *pmap, genvaddr_t vaddr,
             //remove_empty_vnodes(pmap, ptable, table_base, pte_count);
         }
     }
-#endif
-
 
     // setup userspace mapping
     struct vnode *page = slab_alloc(&pmap->p.m.slab);
