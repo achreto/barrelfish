@@ -148,7 +148,7 @@ static errval_t get_arch_config(hwid_t hwid, struct arch_config * config)
     if (err_is_fail(err)) {
         return err;
     }
-    
+
     err = skb_execute_query("psci_use_hvc(C), write(C).");
     if (err_is_fail(err)) {
         printf("error: \n %s\n", skb_get_error_output());
@@ -263,7 +263,7 @@ get_module_info(const char *name, struct module_blob *blob)
 
     DEBUG("getting module %s\n", name);
 
-    err = lookup_module(name, &blob->vaddr,
+    err = lookup_module(name, 0, &blob->vaddr,
                         &blob->paddr, &blob->size);
     if (err_is_fail(err)) {
         DEBUG_ERR(err, "Can not lookup module");

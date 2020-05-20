@@ -37,7 +37,7 @@ struct xcore_bind_handler {
 extern coreid_t my_arch_id;
 extern struct capref ipi_cap;
 
-errval_t get_core_info(coreid_t core_id, 
+errval_t get_core_info(coreid_t core_id,
                        hwid_t* hw_id,
                        enum cpu_type* cpu_type) {
     char* record = NULL;
@@ -78,7 +78,7 @@ module_blob_map(const char *name, struct module_blob *blob)
 {
     errval_t err;
 
-    err = lookup_module(name, &blob->vaddr,
+    err = lookup_module(name, 0, &blob->vaddr,
                         &blob->paddr, &blob->size);
     if (err_is_fail(err)) {
         DEBUG_ERR(err, "Can not lookup module");

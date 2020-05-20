@@ -429,22 +429,13 @@ static errval_t allocate_kernel_memory(lvaddr_t cpu_binary, genpaddr_t page_size
     uint64_t old_maxlimit;
     ram_get_affinity(&old_minbase, &old_maxlimit);
     DEBUG("%s:%d: \n", __FILE__, __LINE__);
-    for (uint64_t minbase = 0, maxlimit = (uint64_t)1 << 30;
-            minbase < (uint64_t)4 << 30;
-            minbase += (uint64_t)1 << 30, maxlimit += (uint64_t)1 << 30) {
 
-        ram_set_affinity(minbase, maxlimit);
-        err = frame_alloc_identify(cpu_memory_cap, *cpu_memory, cpu_memory, id);
-        if (err_is_fail(err)) {
-            continue;
-        } else {
-            goto done;
-        }
+    ram_set_affinity(0, (4UL << 30));
+    err = frame_alloc_identify(cpu_memory_cap, *cpu_memory, cpu_memory, id);
+    if (err_is_fail(err)) {
+        USER_PANIC("No memory in the first 4GB, cannot continue booting cores");
     }
 
-    USER_PANIC("No memory in the first 4GB, cannot continue booting cores");
-
-done:
     ram_set_affinity(old_minbase, old_maxlimit);
 
     return SYS_ERR_OK;
@@ -535,7 +526,7 @@ errval_t spawn_xcore_monitor(coreid_t coreid, hwid_t hwid,
     if (cpu_binary == 0) {
         cached_cpuname = cpuname;
         // XXX: Caching these for now, until we have unmap
-        err = lookup_module(cpuname, &cpu_binary, &cpu_binary_phys,
+        err = lookup_module(cpuname, (4UL << 30), &cpu_binary, &cpu_binary_phys,
                             &cpu_binary_size);
         if (err_is_fail(err)) {
             DEBUG_ERR(err, "Can not lookup module");
@@ -553,7 +544,7 @@ errval_t spawn_xcore_monitor(coreid_t coreid, hwid_t hwid,
     if (monitor_binary == 0) {
         cached_monitorname = monitorname;
         // XXX: Caching these for now, until we have unmap
-        err = lookup_module(monitorname, &monitor_binary,
+        err = lookup_module(monitorname, 0, &monitor_binary,
                             &monitor_binary_phys, &monitor_binary_size);
         if (err_is_fail(err)) {
             DEBUG_ERR(err, "Can not lookup module");

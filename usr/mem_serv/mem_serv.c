@@ -103,7 +103,7 @@ static errval_t mymm_alloc(struct capref *ret, uint8_t bits, genpaddr_t minbase,
     if(maxlimit == 0) {
         /* trying to get ram above 4GB */
         err = mm_alloc_range(&mm_ram, bits, (genpaddr_t)(4UL << 30),
-                            (genpaddr_t)0xffffffffffffffffUL, ret, NULL);
+                            (genpaddr_t)(1024UL << 30), ret, NULL);
         if (err_is_ok(err)) {
             return err;
         }

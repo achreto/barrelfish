@@ -70,7 +70,7 @@ errval_t create_or_get_kcb_cap(coreid_t coreid, struct capref* kcb);
 errval_t give_kcb_to_new_core(coreid_t destination_id, struct capref new_kcb);
 errval_t frame_alloc_identify(struct capref *dest, size_t bytes,
                               size_t *retbytes, struct frame_identity *id);
-errval_t lookup_module(const char *module_name, lvaddr_t *binary_virt,
+errval_t lookup_module(const char *module_name, genpaddr_t maxlimit, lvaddr_t *binary_virt,
                        genpaddr_t *binary_phys, size_t *binary_size);
 errval_t cap_mark_remote(struct capref cap);
 errval_t elfload_allocate(void *state, genvaddr_t base,

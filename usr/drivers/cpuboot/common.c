@@ -191,6 +191,32 @@ errval_t frame_alloc_identify(struct capref *dest, size_t bytes,
     return err;
 }
 
+/**
+ * \brief Same as frame_alloc but also identify the capability.
+ */
+static errval_t frame_alloc_identify_limit(struct capref *dest, size_t bytes, genpaddr_t setmaxlimit,
+                                           size_t *retbytes, struct frame_identity *id)
+{
+    genpaddr_t minbase, maxlimit;
+    ram_get_affinity(&minbase, &maxlimit);
+    ram_set_affinity(0, setmaxlimit);
+
+    errval_t err = frame_alloc(dest, bytes, retbytes);
+    ram_set_affinity(minbase, maxlimit);
+    if (err_is_fail(err)) {
+        if (err_no(err) != LIB_ERR_RAM_ALLOC_MS_CONSTRAINTS){
+            DEBUG_ERR(err, "frame_alloc failed.");
+        }
+        return err;
+    }
+
+    if (id != NULL) {
+        err = frame_identify(*dest, id);
+    }
+
+    return err;
+}
+
 static errval_t cache_module(const char *module_name, struct capref binary_image_cap)
 {
     return oct_put_capability(module_name, binary_image_cap);
@@ -201,7 +227,7 @@ static errval_t lookup_module_cache(const char *module_name, struct capref *bina
     return oct_get_capability(module_name, binary_image_cap);
 }
 
-errval_t lookup_module(const char *module_name, lvaddr_t *binary_virt,
+errval_t lookup_module(const char *module_name, genpaddr_t maxlimit, lvaddr_t *binary_virt,
                        genpaddr_t *binary_phys, size_t *binary_size)
 {
     vfs_handle_t handle;
@@ -237,7 +263,7 @@ errval_t lookup_module(const char *module_name, lvaddr_t *binary_virt,
         }
     }
     else {
-        err = frame_alloc_identify(&binary_image_cap, info.size, NULL, &id);
+        err = frame_alloc_identify_limit(&binary_image_cap, info.size, maxlimit, NULL, &id);
         if (err_is_fail(err)) {
             DEBUG_ERR(err, "Could not allocate space for binary");
             return err;
