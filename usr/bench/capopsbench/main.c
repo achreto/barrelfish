@@ -219,9 +219,15 @@ int main(int argc, char *argv[])
     printf("Running with assertions ENABLED!!!\n");
 #endif
 
+    size_t nrounds = 40;
+
     if (argc > 1 && strncmp(argv[1], "mgmt", 4) == 0) {
         if (argc == 3) {
             ncores = strtoul(argv[2], NULL, 10);
+        }
+        if (argc == 4) {
+            ncores = strtoul(argv[2], NULL, 10);
+            nrounds = strtoul(argv[3], NULL, 10);
         }
         init_benchmark();
     } else {
@@ -237,7 +243,7 @@ int main(int argc, char *argv[])
         PANIC_IF_ERR(err, "in main: event_dispatch");
     }
 
-    size_t nrounds = 30;
+
     size_t ndryrun = 10;
     /* we have all seen, start benchmark rounds */
     printf("Nodes ready starting benchmark rounds..\n");
