@@ -17,5 +17,12 @@ build application {
     flounderBindings = [ "bench_distops" ],
     addLibraries = [ "bench" ],
     architectures = ["armv8", "x86_64"]
+    },
+build application {
+    target = "capopsbenchmsg",
+    cFiles = [ "main_msg.c" ],
+    flounderBindings = [ "bench_distops" ],
+    addLibraries = [ "bench" ],
+    architectures = ["armv8", "x86_64"]
     }
 ]

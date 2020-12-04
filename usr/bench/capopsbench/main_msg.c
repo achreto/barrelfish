@@ -24,7 +24,7 @@
 #include <if/bench_distops_defs.h>
 
 static struct capref mem;
-static char *path = "capopsbench";
+static char *path = "capopsbenchmsg";
 static char *service_name = "maprevoke";
 static size_t memsize = BASE_PAGE_SIZE;
 static size_t ncores = 1;
@@ -51,6 +51,9 @@ static struct benchstate benchstate;
     } while (0)
 
 
+static struct capref mem_cap;
+static void *mapped;
+
 /* Flounder Stuff  */
 
 static void node_rx_hello(struct bench_distops_binding *b, uint32_t coreid)
@@ -59,11 +62,43 @@ static void node_rx_hello(struct bench_distops_binding *b, uint32_t coreid)
     benchstate.seen++;
 }
 
+#define CMD_ACK 0
+#define CMD_NACK 1
+#define CMD_MAP 2
+#define CMD_UNMAP 3
+
+
 static void node_rx_cmd(struct bench_distops_binding *b, uint32_t cmd, uint32_t arg)
 {
-    DEBUG("rx_cmd %" PRIu32 ": b->st = %p\n", arg, b->st);
-    benchstate.seen++;
+    errval_t err;
+
+    if (cmd == CMD_MAP) {
+        DEBUG("node_rx_cmd MAP %" PRIu32 ": b->st = %p\n", arg, b->st);
+        err = vspace_map_one_frame(&mapped, memsize, mem_cap, NULL, NULL);
+    } else {
+        DEBUG("node_rx_cmd UNMAP %" PRIu32 ": b->st = %p\n", arg, b->st);
+        err = vspace_unmap(mapped);
+    }
+
+    uint32_t retcmd = CMD_ACK;
+    if (err_is_fail(err)) {
+        retcmd = CMD_NACK;
+    }
+
+    err = bench_distops_cmd__tx(b, NOP_CONT, retcmd, disp_get_core_id());
+    PANIC_IF_ERR(err, "in node %d: sending cmd to server", disp_get_core_id());
 }
+
+static void mgmt_rx_cmd(struct bench_distops_binding *b, uint32_t cmd, uint32_t arg)
+{
+    if (cmd == CMD_ACK) {
+        DEBUG("mgmt_rx_cmd ACK %" PRIu32 ": b->st = %p\n", arg, b->st);
+        benchstate.seen++;
+        return;
+    }
+    printf("unknown command; %d\n", cmd);
+}
+
 
 static void node_rx_caps(struct bench_distops_binding *b, uint32_t cmd, uint32_t arg,
                          struct capref cap1)
@@ -71,24 +106,21 @@ static void node_rx_caps(struct bench_distops_binding *b, uint32_t cmd, uint32_t
     errval_t err;
     DEBUG("node %d rx_caps: cmd=%" PRIu32 "\n", disp_get_core_id(), cmd);
 
-    void *addr;
-    err = vspace_map_one_frame(&addr, memsize, cap1, NULL, NULL);
-    PANIC_IF_ERR(err, "failed to map frame");
-    if (addr == NULL) {
-        printf("WARNING: addr was null?\n");
-    }
-
-    DEBUG("node %d rx_caps: mapped %p.\n", disp_get_core_id(), addr);
+    mem_cap = cap1;
 
     /* send reply back */
-    err = bench_distops_cmd__tx(b, NOP_CONT, disp_get_core_id(), 0);
+    err = bench_distops_cmd__tx(b, NOP_CONT, CMD_ACK, disp_get_core_id());
     PANIC_IF_ERR(err, "in node %d: sending cmd to server", disp_get_core_id());
 }
 
 
-static struct bench_distops_rx_vtbl rx_vtbl = {
+static struct bench_distops_rx_vtbl node_rx_vtbl = {
     .cmd = node_rx_cmd,
     .caps = node_rx_caps,
+};
+
+static struct bench_distops_rx_vtbl mgmt_rx_vtbl = {
+    .cmd = mgmt_rx_cmd,
     .hello = node_rx_hello,
 };
 
@@ -100,7 +132,7 @@ static void bind_cb(void *st, errval_t err, struct bench_distops_binding *b)
     printf("node %d bound!\n", disp_get_core_id());
 
     // copy my message receive handler vtable to the binding
-    b->rx_vtbl = rx_vtbl;
+    b->rx_vtbl = node_rx_vtbl;
 
     // Send hello message
     printf("%s: node %d sending hello msg\n", __FUNCTION__, disp_get_core_id());
@@ -113,7 +145,7 @@ static errval_t connect_cb(void *st, struct bench_distops_binding *b)
 {
     printf("service got a connection!\n");
 
-    b->rx_vtbl = rx_vtbl;
+    b->rx_vtbl = mgmt_rx_vtbl;
 
     static int nidx = 0;
     benchstate.nodes[nidx++] = b;
@@ -134,7 +166,6 @@ static void export_cb(void *st, errval_t err, iref_t iref)
 
     for (size_t i = 0; i < ncores; i++) {
         struct capref domcap;
-        printf("SPANING\n");
         char *argv[] = { NULL };
         err = spawn_program(i + 1, path, argv, NULL, SPAWN_FLAGS_DEFAULT, &domcap);
         PANIC_IF_ERR(err, "export failed");
@@ -166,14 +197,20 @@ static void run_node(void)
 }
 
 
-static void run_benchmark(void)
+static void run_benchmark(size_t _ncores)
 {
     errval_t err;
 
-    for (size_t i = 0; i < benchstate.ncores; i++) {
-        DEBUG("%s: sending cap to node %zu \n", __FUNCTION__, i);
-        err = bench_distops_caps__tx(benchstate.nodes[i], NOP_CONT, 0, 0, mem);
+
+    benchstate.seen = 0;
+    benchstate.ncores = _ncores;
+
+    struct waitset *ws = get_default_waitset();
+    for (size_t i = 0; i < _ncores; i++) {
+        DEBUG("%s: sending map command to node %zu \n", __FUNCTION__, i);
+        err = bench_distops_cmd__tx(benchstate.nodes[i], NOP_CONT, CMD_MAP, 0);
         PANIC_IF_ERR(err, "in node %d: sending cap to server", disp_get_core_id());
+        event_dispatch_non_block(ws);
     }
 
     void *addr;
@@ -182,6 +219,39 @@ static void run_benchmark(void)
 
     if (addr == NULL) {
         printf("WARNING: addr was null?\n");
+    }
+
+    for (size_t i = 0; i < _ncores; i++) {
+        DEBUG("%s: sending map command to node %zu \n", __FUNCTION__, i);
+        err = bench_distops_cmd__tx(benchstate.nodes[i], NOP_CONT, CMD_UNMAP, 0);
+        PANIC_IF_ERR(err, "in node %d: sending cap to server", disp_get_core_id());
+        event_dispatch_non_block(ws);
+    }
+
+    vspace_unmap(addr);
+
+    while (benchstate.seen != 2*_ncores) {
+        err = event_dispatch(ws);
+        PANIC_IF_ERR(err, "in main: event_dispatch");
+    }
+}
+
+static void prepare_benchmark(size_t _ncores)
+{
+    errval_t err;
+
+    benchstate.seen = 0;
+    benchstate.ncores = _ncores;
+
+    for (size_t i = 0; i < _ncores; i++) {
+        DEBUG("%s: sending cap to node %zu \n", __FUNCTION__, i);
+        err = bench_distops_caps__tx(benchstate.nodes[i], NOP_CONT, 0, 0, mem);
+        PANIC_IF_ERR(err, "in node %d: sending cap to server", disp_get_core_id());
+    }
+
+    while (benchstate.seen != _ncores) {
+        err = event_dispatch(get_default_waitset());
+        PANIC_IF_ERR(err, "in main: event_dispatch");
     }
 }
 
@@ -207,7 +277,6 @@ static void init_benchmark(void)
     err = bench_distops_export(NULL, export_cb, connect_cb, get_default_waitset(),
                                IDC_EXPORT_FLAGS_DEFAULT);
     PANIC_IF_ERR(err, "export failed");
-
 }
 
 
@@ -243,6 +312,9 @@ int main(int argc, char *argv[])
         PANIC_IF_ERR(err, "in main: event_dispatch");
     }
 
+    printf("Preparing benchmark..\n");
+    prepare_benchmark(ncores);
+
 
     size_t ndryrun = 10;
     /* we have all seen, start benchmark rounds */
@@ -252,18 +324,9 @@ int main(int argc, char *argv[])
         printf("NCORES=%zu,cycles=[", ncores);
         cycles_t sum = 0;
         for (size_t i = 0; i < nrounds; i++) {
-            benchstate.seen = 0;
-            benchstate.ncores = ncores;
             cycles_t t_start = bench_tsc();
-            run_benchmark();
-
-            while (benchstate.seen != ncores) {
-                err = event_dispatch(ws);
-                PANIC_IF_ERR(err, "in main: event_dispatch");
-            }
-            err = cap_revoke(mem);
+            run_benchmark(ncores);
             cycles_t t_end = bench_tsc();
-            PANIC_IF_ERR(err, "in main: cap_revoke");
             if (i > ndryrun) {
                 printf(", %zu", t_end - t_start);
                 sum += t_end - t_start;
@@ -278,5 +341,5 @@ int main(int argc, char *argv[])
         } while(err_is_ok(err));
     }
 
-    printf ("done\n");
+    printf("done.\n");
 }
