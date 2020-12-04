@@ -40,7 +40,7 @@ usage() {
     echo "       <arch>."
     echo "   -r|--toolroot <path>: where should I look for toolchains (instead"
     echo "       of (/home/netos/tools)"
-    ecgi "   -f|--flags <flags>: the compiler flags to set (defaut $DEFAULT_OPT_FLAGS)"
+    echo "   -f|--flags <flags>: the compiler flags to set (defaut $DEFAULT_OPT_FLAGS)"
     echo "   -j|--jobs: Number of parallel jobs to run (default $DEFAULT_JOBS)."
     echo "   --hagfish: Location of Hagfish boot loader (default $HAGFISH_LOCATION)."
     echo "   --cachedir: Cache directory (default $CACHEDIR)."
