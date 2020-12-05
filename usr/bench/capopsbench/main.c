@@ -247,9 +247,11 @@ int main(int argc, char *argv[])
     size_t ndryrun = 10;
     /* we have all seen, start benchmark rounds */
     printf("Nodes ready starting benchmark rounds..\n");
+    printf("===================== BEGIN CSV =====================\n");
+
     size_t maxcores = ncores;
     for (ncores = 0; ncores <= maxcores; ncores++) {
-        printf("NCORES=%zu,cycles=[", ncores);
+        printf("NCORES=%zu,", ncores);
         cycles_t sum = 0;
         for (size_t i = 0; i < nrounds; i++) {
             benchstate.seen = 0;
@@ -264,19 +266,17 @@ int main(int argc, char *argv[])
             err = cap_revoke(mem);
             cycles_t t_end = bench_tsc();
             PANIC_IF_ERR(err, "in main: cap_revoke");
-            if (i > ndryrun) {
-                printf(", %zu", t_end - t_start);
-                sum += t_end - t_start;
-            } else if (i == ndryrun) {
-                printf("%zu", t_end - t_start);
+            if (i >= ndryrun) {
+                printf(" %zu,", t_end - t_start);
                 sum += t_end - t_start;
             }
         }
-        printf("], avg=%zu\n", sum / (nrounds - ndryrun));
+        printf(" avg=%zu\n", sum / (nrounds - ndryrun));
         do {
             err = event_dispatch_non_block(ws);
         } while(err_is_ok(err));
     }
+    printf("====================== END CSV ======================\n");
 
     printf ("done\n");
 }
