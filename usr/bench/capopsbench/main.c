@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 
     size_t maxcores = ncores;
     for (ncores = 0; ncores <= maxcores; ncores++) {
-        printf("NCORES=%zu,", ncores);
+        printf("NCORES=%zu, ", ncores);
         printf("NROUND=%zu,", nrounds);
         cycles_t sum = 0;
         for (size_t i = 0; i < nrounds; i++) {
