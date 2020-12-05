@@ -15,14 +15,14 @@ build application {
     target = "capopsbench",
     cFiles = [ "main.c" ],
     flounderBindings = [ "bench_distops" ],
-    addLibraries = [ "bench" ],
+    addLibraries = [ "bench",  "dist" ],
     architectures = ["armv8", "x86_64"]
     },
 build application {
     target = "capopsbenchmsg",
     cFiles = [ "main_msg.c" ],
     flounderBindings = [ "bench_distops" ],
-    addLibraries = [ "bench" ],
+    addLibraries = [ "bench",  "dist" ],
     architectures = ["armv8", "x86_64"]
     }
 ]

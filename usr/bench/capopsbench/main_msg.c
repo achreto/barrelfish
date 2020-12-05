@@ -22,6 +22,7 @@
 #include <bench/bench.h>
 #include <barrelfish/nameservice_client.h>
 #include <if/bench_distops_defs.h>
+#include <dist/barrier.h>
 
 static struct capref mem;
 static char *path = "capopsbenchmsg";
@@ -230,7 +231,7 @@ static void run_benchmark(size_t _ncores)
 
     vspace_unmap(addr);
 
-    while (benchstate.seen != 2*_ncores) {
+    while (benchstate.seen != 2 * _ncores) {
         err = event_dispatch(ws);
         PANIC_IF_ERR(err, "in main: event_dispatch");
     }
@@ -282,7 +283,19 @@ static void init_benchmark(void)
 
 int main(int argc, char *argv[])
 {
+    errval_t err;
+
     bench_init();
+
+#define ALL_SPAWNDS_UP "all_spawnds_up"  // this comes from spawnd/internal.h
+
+    printf("[bench] waiting for all cores up...\n");
+    err = nsb_wait(ALL_SPAWNDS_UP);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "failed ns barrier wait for %s", ALL_SPAWNDS_UP);
+    }
+
+    printf("[bench] OK. all cores ready..\n");
 
 #ifndef NDEBUG
     printf("Running with assertions ENABLED!!!\n");
@@ -303,22 +316,22 @@ int main(int argc, char *argv[])
         run_node();
     }
 
-    errval_t err;
+
     struct waitset *ws = get_default_waitset();
 
-    printf("Waiting for nodes to be ready\n");
+    printf("[bench] Waiting for nodes to be ready\n");
     while (benchstate.seen != ncores) {
         err = event_dispatch(ws);
         PANIC_IF_ERR(err, "in main: event_dispatch");
     }
 
-    printf("Preparing benchmark..\n");
+    printf("[bench] Preparing benchmark..\n");
     prepare_benchmark(ncores);
 
 
     size_t ndryrun = 10;
     /* we have all seen, start benchmark rounds */
-    printf("Nodes ready starting benchmark rounds..\n");
+    printf("[bench] Nodes ready starting benchmark rounds..\n");
     printf("===================== BEGIN CSV =====================\n");
 
     size_t maxcores = ncores;
@@ -338,7 +351,7 @@ int main(int argc, char *argv[])
         printf(" avg=%zu\n", sum / (nrounds - ndryrun));
         do {
             err = event_dispatch_non_block(ws);
-        } while(err_is_ok(err));
+        } while (err_is_ok(err));
     }
     printf("====================== END CSV ======================\n");
     printf("done.\n");

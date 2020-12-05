@@ -22,6 +22,7 @@
 #include <bench/bench.h>
 #include <barrelfish/nameservice_client.h>
 #include <if/bench_distops_defs.h>
+#include <dist/barrier.h>
 
 static struct capref mem;
 static char *path = "capopsbench";
@@ -215,6 +216,16 @@ int main(int argc, char *argv[])
 {
     bench_init();
 
+    errval_t err;
+
+    #define ALL_SPAWNDS_UP "all_spawnds_up" // this comes from spawnd/internal.h
+    printf("[bench] waiting for all cores up...\n");
+    err = nsb_wait(ALL_SPAWNDS_UP);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "failed ns barrier wait for %s", ALL_SPAWNDS_UP);
+    }
+
+    printf("[bench] cores up. starting benchmark.\n");
 #ifndef NDEBUG
     printf("Running with assertions ENABLED!!!\n");
 #endif
@@ -234,10 +245,10 @@ int main(int argc, char *argv[])
         run_node();
     }
 
-    errval_t err;
+
     struct waitset *ws = get_default_waitset();
 
-    printf("Waiting for nodes to be ready\n");
+    printf("[bench] Waiting for nodes to be ready\n");
     while (benchstate.seen != ncores) {
         err = event_dispatch(ws);
         PANIC_IF_ERR(err, "in main: event_dispatch");
@@ -246,7 +257,7 @@ int main(int argc, char *argv[])
 
     size_t ndryrun = 10;
     /* we have all seen, start benchmark rounds */
-    printf("Nodes ready starting benchmark rounds..\n");
+    printf("[bench] Nodes ready starting benchmark rounds..\n");
     printf("===================== BEGIN CSV =====================\n");
 
     size_t maxcores = ncores;
