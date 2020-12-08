@@ -218,7 +218,8 @@ int main(int argc, char *argv[])
 
     errval_t err;
 
-    #define ALL_SPAWNDS_UP "all_spawnds_up" // this comes from spawnd/internal.h
+
+    #define ALL_SPAWNDS_UP "all_spawnds_up"  // this comes from spawnd/internal.h
     printf("[bench] waiting for all cores up...\n");
     err = nsb_wait(ALL_SPAWNDS_UP);
     if (err_is_fail(err)) {
@@ -268,13 +269,13 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < nrounds; i++) {
             benchstate.seen = 0;
             benchstate.ncores = ncores;
-            cycles_t t_start = bench_tsc();
             run_benchmark();
 
             while (benchstate.seen != ncores) {
                 err = event_dispatch(ws);
                 PANIC_IF_ERR(err, "in main: event_dispatch");
             }
+            cycles_t t_start = bench_tsc();
             err = cap_revoke(mem);
             cycles_t t_end = bench_tsc();
             PANIC_IF_ERR(err, "in main: cap_revoke");

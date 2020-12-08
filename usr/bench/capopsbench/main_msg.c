@@ -198,7 +198,7 @@ static void run_node(void)
 }
 
 
-static void run_benchmark(size_t _ncores)
+static void run_benchmark_phase1(size_t _ncores)
 {
     errval_t err;
 
@@ -214,13 +214,27 @@ static void run_benchmark(size_t _ncores)
         event_dispatch_non_block(ws);
     }
 
-    void *addr;
-    err = vspace_map_one_frame(&addr, memsize, mem, NULL, NULL);
+    err = vspace_map_one_frame(&mapped, memsize, mem, NULL, NULL);
     PANIC_IF_ERR(err, "failed to map frame");
 
-    if (addr == NULL) {
+    if (mapped == NULL) {
         printf("WARNING: addr was null?\n");
     }
+
+    while (benchstate.seen != _ncores) {
+        err = event_dispatch(ws);
+        PANIC_IF_ERR(err, "in main: event_dispatch");
+    }
+}
+
+static void run_benchmark_phase2(size_t _ncores)
+{
+    errval_t err;
+
+    benchstate.seen = 0;
+    benchstate.ncores = _ncores;
+
+    struct waitset *ws = get_default_waitset();
 
     for (size_t i = 0; i < _ncores; i++) {
         DEBUG("%s: sending map command to node %zu \n", __FUNCTION__, i);
@@ -229,9 +243,9 @@ static void run_benchmark(size_t _ncores)
         event_dispatch_non_block(ws);
     }
 
-    vspace_unmap(addr);
+    vspace_unmap(mapped);
 
-    while (benchstate.seen != 2 * _ncores) {
+    while (benchstate.seen != _ncores) {
         err = event_dispatch(ws);
         PANIC_IF_ERR(err, "in main: event_dispatch");
     }
@@ -340,8 +354,10 @@ int main(int argc, char *argv[])
         printf("NROUND=%zu,", nrounds);
         cycles_t sum = 0;
         for (size_t i = 0; i < nrounds; i++) {
+
+            run_benchmark_phase1(ncores);
             cycles_t t_start = bench_tsc();
-            run_benchmark(ncores);
+            run_benchmark_phase2(ncores);
             cycles_t t_end = bench_tsc();
             if (i >= ndryrun) {
                 printf(" %zu,", t_end - t_start);
