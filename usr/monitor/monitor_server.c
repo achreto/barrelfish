@@ -210,7 +210,7 @@ static void get_service_id_request(struct monitor_binding *b, iref_t iref)
     /* Look up core_id from the iref */
     uint8_t core_id;
     iref_get_core_id(iref, &core_id);
-    
+
     // Return error if service on different core
     if (core_id != my_core_id) {
         get_service_id_reply_cont(b, MON_ERR_IDC_BIND_NOT_SAME_CORE, iref, 0);
@@ -785,13 +785,24 @@ cap_send_tx_cont(struct intermon_binding *b,
                  struct intermon_msg_queue_elem *e)
 {
     DEBUG_CAPOPS("%s: %p %p\n", __FUNCTION__, b, e);
-    errval_t send_err;
+    errval_t send_err, queue_err;
     struct send_cap_st *st = (struct send_cap_st*)e;
+
     struct remote_conn_state *conn = remote_conn_lookup(st->my_mon_id);
     send_err = intermon_cap_send_request__tx(b, NOP_CONT, conn->mon_id,
                                                 st->capid, st->captx);
     if (err_is_fail(send_err)) {
-        DEBUG_ERR(send_err, "sending cap_send_request failed");
+        DEBUG_ERR(send_err, "sending cap_send_request failed, retrying...");
+        struct intermon_binding *binding = conn->mon_binding;
+        struct intermon_state *inter_st = (struct intermon_state*)binding->st;
+        queue_err = intermon_enqueue_send(binding, &inter_st->queue,
+                                          binding->waitset, (struct msg_queue_elem*)e);
+
+        if (err_is_fail(queue_err)) {
+            DEBUG_ERR(queue_err, "enqueuing cap_send_request failed");
+            free(st);
+        }
+        return;
     }
     free(st);
 }
