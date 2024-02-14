@@ -45,7 +45,9 @@
     ],
     mackerelDevices = ["vtd"],
     flounderDefs = [ "iommu", "pci_iommu" ],
-    flounderBindings = [ "iommu", "pci_iommu" ]
+    flounderBindings = [ "iommu", "pci_iommu" ],
+    flounderExtraDefs = [ ( "iommu", [ "rpcclient" ] ) ],
+    flounderExtraBindings = [ ( "iommu", [ "rpcclient" ] ) ]
   },
 
   build application {
