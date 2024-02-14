@@ -33,6 +33,13 @@
 #define MEMORY_OFFSET X86_64_MEMORY_OFFSET
 #endif
 
+#include <arbutus/x8664pml4_unit.h>
+#include <arbutus/x8664pdpt_unit.h>
+#include <arbutus/x8664pdir_unit.h>
+#include <arbutus/x8664pagetable_unit.h>
+
+
+
 /// Map within a x86_64 non leaf ptable
 static errval_t x86_64_non_ptable(struct capability *dest, cslot_t slot,
                                   struct capability *src, uintptr_t flags,
@@ -221,8 +228,77 @@ static errval_t x86_64_non_ptable(struct capability *dest, cslot_t slot,
     // use standard paging structs even if we're mapping EPT entries
     is_ept = false;
 
+    flags_t flgs = { 0 };
+    flgs.writable = flags & X86_64_PTABLE_READ_WRITE ? 1 : 0;
+    flgs.readable = 1;
+    flgs.executable = flags & X86_64_PTABLE_EXECUTE_DISABLE ? 0 : 1;
+    flgs.usermode = flags & X86_64_PTABLE_USER_SUPERVISOR ? 1 : 0;
+    flgs.devicemem = flags & X86_64_PTABLE_CACHE_DISABLED ? 1 : 0;
+
     bool need_tlb_flush = false;
     cslot_t last_slot = slot + pte_count;
+     switch (dest->type) {
+        case ObjType_VNode_x86_64_pml4: {
+            x8664pml4__t pml4;
+            x8664pml4_init(&pml4, dest_lv);
+            assert(last_slot == slot + 1);
+
+            x8664pdpt__t pdpt;
+            x8664pdpt_init(&pdpt, src_lp + offset);
+
+            vaddr_t va = (vaddr_t)slot * X86_64_HUGE_PAGE_SIZE * 512UL;
+            size_t res = x8664pml4_map_entry(&pml4, va, X86_64_HUGE_PAGE_SIZE * 512UL, flgs, &pdpt);
+            assert(res == X86_64_HUGE_PAGE_SIZE * 512UL);
+        }
+            break;
+        case ObjType_VNode_x86_64_pdpt: {
+            x8664pdpt__t pdpt;
+            x8664pdpt_init(&pdpt, dest_lv);
+            if (src->type == ObjType_VNode_x86_64_pdir) {
+                assert(last_slot == slot + 1);
+
+                x8664pdir__t pdir;
+                x8664pdir_init(&pdir, src_lp + offset);
+
+                vaddr_t va = (vaddr_t)slot * X86_64_HUGE_PAGE_SIZE;
+                size_t res = x8664pdpt_map_entrytable(&pdpt, va, X86_64_HUGE_PAGE_SIZE, flgs, &pdir);
+                assert(res == X86_64_HUGE_PAGE_SIZE);
+            } else {
+                for (; slot < last_slot; slot++, offset += page_size) {
+                    vaddr_t va = (vaddr_t)slot * X86_64_HUGE_PAGE_SIZE;
+                    x8664pdpt_map_entrypage(&pdpt, va, X86_64_HUGE_PAGE_SIZE, flgs, src_lp + offset);
+                }
+            }
+
+        }
+            break;
+        case ObjType_VNode_x86_64_pdir: {
+            x8664pdir__t pdir;
+            x8664pdir_init(&pdir, dest_lv);
+
+            if (src->type == ObjType_VNode_x86_64_ptable) {
+                assert(last_slot == slot + 1);
+                vaddr_t va = (vaddr_t)slot * X86_64_LARGE_PAGE_SIZE;
+
+                x8664pagetable__t pt;
+                x8664pagetable_init(&pt, src_lp + offset);
+                size_t res = x8664pdir_map_entrytable(&pdir, va, X86_64_LARGE_PAGE_SIZE, flgs, &pt);
+                assert(res == X86_64_LARGE_PAGE_SIZE);
+            } else {
+                for (; slot < last_slot; slot++, offset += page_size) {
+                        vaddr_t va = (vaddr_t)slot * X86_64_LARGE_PAGE_SIZE;
+                        x8664pdir_map_entrypage(&pdir, va, X86_64_LARGE_PAGE_SIZE, flgs, src_lp + offset);
+                    }
+            }
+        }
+            break;
+        default:
+            printf("don't support this mapping type yet!\n");
+            return SYS_ERR_DEST_TYPE_INVALID;
+     }
+
+    // bool need_tlb_flush = false;
+    // cslot_t last_slot = slot + pte_count;
     for (; slot < last_slot; slot++, offset += page_size) {
         // Destination
         union x86_64_pdir_entry *entry = (union x86_64_pdir_entry *)dest_lv + slot;
@@ -231,7 +307,7 @@ static errval_t x86_64_non_ptable(struct capability *dest, cslot_t slot,
             // cleanup mapping info
             // TODO: cleanup already mapped pages
             //memset(&src_cte->mapping_info, 0, sizeof(struct mapping_info));
-            //printf("slot in use\n");
+            // printf("slot in use\n"); // that one should be a warning now!
             //return SYS_ERR_VNODE_SLOT_INUSE;
             need_tlb_flush = true;
         }
@@ -262,7 +338,7 @@ static errval_t x86_64_non_ptable(struct capability *dest, cslot_t slot,
   //              paging_x86_64_ept_map_table(
   //                      (union x86_64_ept_pdir_entry *)entry, src_lp + offset);
   //          } else {
-                paging_x86_64_map_table(entry, src_lp + offset);
+                // paging_x86_64_map_table(entry, src_lp + offset);
   //          }
         }
     }
@@ -351,6 +427,20 @@ static errval_t x86_64_ptable(struct capability *dest, cslot_t slot,
     create_mapping_cap(mapping_cte, src, cte_for_cap(dest),
                        slot, pte_count);
 
+
+    x8664pagetable__t pt;
+    x8664pagetable_init(&pt, dest_lv);
+
+
+
+    flags_t flgs = { 0 };
+    flgs.writable = flags & X86_64_PTABLE_READ_WRITE ? 1 : 0;
+    flgs.readable = 1;
+    flgs.executable = flags & X86_64_PTABLE_EXECUTE_DISABLE ? 0 : 1;
+    flgs.usermode = flags & X86_64_PTABLE_USER_SUPERVISOR ? 1 : 0;
+    flgs.devicemem = flags & X86_64_PTABLE_CACHE_DISABLED ? 1 : 0;
+
+
     bool need_tlb_flush = false;
     cslot_t last_slot = slot + pte_count;
     for (; slot < last_slot; slot++, offset += X86_64_BASE_PAGE_SIZE) {
@@ -366,6 +456,10 @@ static errval_t x86_64_ptable(struct capability *dest, cslot_t slot,
             need_tlb_flush = true;
         }
 
+
+        vaddr_t va = slot * X86_64_BASE_PAGE_SIZE;
+        x8664pagetable_map(&pt, va, X86_64_BASE_PAGE_SIZE, flgs, src_lp + offset);
+
         // Carry out the page mapping
 #if 0
         if (type_is_ept(dest->type)) {
@@ -375,7 +469,7 @@ static errval_t x86_64_ptable(struct capability *dest, cslot_t slot,
             paging_x86_64_map(entry, src_lp + offset, flags);
         }
 #endif
-        paging_x86_64_map(entry, src_lp + offset, flags);
+        // paging_x86_64_map(entry, src_lp + offset, flags);
     }
     if (need_tlb_flush) {
         // TODO: do hint-based selective tlb flush if single page modified
@@ -1105,7 +1199,7 @@ void paging_dump_tables_around(struct dcb *dispatcher, lvaddr_t vaddr)
                         (union x86_64_ptable_entry *)ptable_lv + entry;
                     if (!e->base.present) { continue; }
                     genpaddr_t paddr = (genpaddr_t)e->base.base_addr << BASE_PAGE_BITS;
-                    printf("%d.%d.%d.%d: 0x%"PRIxGENPADDR" (%d %d %d), raw=0x%"PRIx64"\n", 
+                    printf("%d.%d.%d.%d: 0x%"PRIxGENPADDR" (%d %d %d), raw=0x%"PRIx64"\n",
                             pdpt_index, pdir_index, ptable_index, entry,
                             paddr, e->base.read_write, e->base.dirty, e->base.accessed,
                             e->raw);
