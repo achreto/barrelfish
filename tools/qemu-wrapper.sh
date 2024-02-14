@@ -226,10 +226,6 @@ case "$ARCH" in
         -m ${MEMORY} ${HUGEMEMOBJ} \
         ${KVM} \
         -cpu host,migratable=no,+invtsc,+tsc,+x2apic,+fsgsbase \
-        -netdev user,id=network0 \
-        -device $NIC_MODEL,netdev=network0 \
-        -device ahci,id=ahci \
-        -device ide-drive,drive=disk,bus=ahci.0 \
         -drive id=disk,file="$HDFILE",if=none"
     QEMU_NONDEBUG=-nographic
     GDB=gdb-multiarch
