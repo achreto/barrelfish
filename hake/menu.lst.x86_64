@@ -49,3 +49,5 @@ module /x86_64/sbin/hpet auto
 module  /x86_64/sbin/fish nospawn
 module	/x86_64/sbin/angler serial0.terminal xterm
 
+module    /x86_64/sbin/vspace
+

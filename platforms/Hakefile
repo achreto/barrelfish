@@ -97,7 +97,8 @@ let bin_rcce_lu = [ "/sbin/" ++ f | f <- [
                         "tlstest",
                         "tweedtest",
                         "xcorecap",
-                        "xcorecapserv" ] ] ++ tests_x86
+                        "xcorecapserv"
+                        ] ] ++ tests_x86
 
 
     tests_k1om = [ "/sbin/" ++ f | f <- [
@@ -271,7 +272,8 @@ let bin_rcce_lu = [ "/sbin/" ++ f | f <- [
                            "hpet",
                            "xeon_phi_mgr",
                            "mlx4",
-                           "net_sockets_server"
+                           "net_sockets_server",
+                           "vspace"
                            ]] ++ modules_common
 
     -- the following are broken in the newidc system
@@ -398,7 +400,7 @@ let bin_rcce_lu = [ "/sbin/" ++ f | f <- [
                        "pl390_dist",
                        "fish",
                        "angler",
-                       "kaluga",    
+                       "kaluga",
                        "enet",
                        "acpi"
                        ] ]
@@ -759,19 +761,19 @@ let bin_rcce_lu = [ "/sbin/" ++ f | f <- [
       )
     "Boot QEMU in 64-bit ARM mode emulating a ARM Virtual Machine using U-Boot",
 
-    boot_fastmodels "ARM_FastModels_Base_A57x1" [ "armv8" ] 
+    boot_fastmodels "ARM_FastModels_Base_A57x1" [ "armv8" ]
       "armv8_a57_fvp_base_image"
       "ARM_FastModels/ARMv8_Base_A57x1/ARMv8_Base_A57x1"
       fvp_simargs
       "Boot on a ARM FastModels Base A57x1 Platform",
 
-    boot_fastmodels_lisa "ARM_FastModels_Barebones" [ "armv8" ] 
+    boot_fastmodels_lisa "ARM_FastModels_Barebones" [ "armv8" ]
       "armv8_a57_fvp_base_image"
       "barebones"
       barebones_simargs
       "Boot on a ARM FastModels based on Sven's Barebones",
 
-    boot_fastmodels "ARM_FastModels_Base_A57x4" [ "armv8" ] 
+    boot_fastmodels "ARM_FastModels_Base_A57x4" [ "armv8" ]
       "armv8_a57_fvp_base_image"
       "ARM_FastModels/ARMv8_Base_A57x4"
       fvp_simargs

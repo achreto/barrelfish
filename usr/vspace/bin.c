@@ -1,0 +1,85 @@
+/**
+ * \file
+ * \brief Test program for large page code
+ */
+
+/*
+ * Copyright (c) 2024, ETH Zurich.
+ * All rights reserved.
+ *
+ * This file is distributed under the terms in the attached LICENSE file.
+ * If you do not find this file, copies can be found by writing to:
+ * ETH Zurich D-INFK, Universitaetstrasse 6, CH-8092 Zurich. Attn: Systems Group.
+ */
+
+#include <barrelfish/barrelfish.h>
+#include <stdio.h>
+
+#include <myos.h>
+#include <arbutus/x8664pml4_unit.h>
+#include <arbutus/x8664pdpt_unit.h>
+#include <arbutus/x8664pdir_unit.h>
+#include <arbutus/x8664pagetable_unit.h>
+
+int main(int argc, char *argv[])
+{
+    errval_t err;
+
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+
+
+    // allocate some frame
+    MyFrame frame = { 0 };
+    err = frame_alloc(&frame.cap, BASE_PAGE_SIZE, NULL);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "frame_alloc failed");
+    }
+
+    err = slot_alloc(&frame.mapping);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "slot_alloc failed");
+    }
+
+
+
+    // create the vnode to the vroot
+    MyVNode vnode = { 0 };
+    vnode.cap = cap_vroot;
+
+    // create the pml4
+    x8664pml4__t pml4;
+    x8664pml4_init(&pml4, vnode);
+
+    flags_t flgs = {0};
+    flgs.readable = 1;
+    flgs.writable = 1;
+    flgs.usermode = 1;
+
+
+    #define VA_START (1UL << 41)
+    printf("Mapping the frame at address 0x%lx\n", VA_START);
+    size_t sz = x8664pml4_map(&pml4, VA_START, BASE_PAGE_SIZE, flgs, frame);
+    if (sz != BASE_PAGE_SIZE) {
+        USER_PANIC("x8664pml4_map failed");
+    }
+
+    debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+
+    printf("accessing memory...");
+    uint64_t *addr = (uint64_t *)VA_START;
+    printf("*addr = %lx\n", *addr);
+
+    printf("*addr = 42\n");
+    *addr = 42;
+    printf("*addr = %lu\n", *addr);
+
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+
+    printf("Hello, world!\n");
+    return 0;
+}
