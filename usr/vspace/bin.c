@@ -39,6 +39,14 @@ static errval_t new_frame(MyFrame *frame, size_t size)
     return SYS_ERR_OK;
 }
 
+#include <barrelfish_kpi/syscalls.h>
+#include <barrelfish_kpi/sys_debug.h>
+static errval_t sys_debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa)
+{
+    return syscall5(SYSCALL_DEBUG, DEBUG_MMAP, va, sz, pa).error;
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -82,6 +90,33 @@ int main(int argc, char *argv[])
     printf("*addr = 42\n");
     *addr = 42;
     printf("*addr = %lu\n", *addr);
+
+
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+
+    struct frame_identity thecap;
+    err = cap_identify_mappable(frame.cap, &thecap);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "could not identify the frame");
+    }
+    addr = (uint64_t *)(VA_START << 1);
+    err = sys_debug_mmap((lvaddr_t)addr, BASE_PAGE_SIZE, thecap.base);
+    if (err_is_fail(err)) {
+        USER_PANIC_ERR(err, "could not allocate frame");
+    }
+
+    debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+
+    printf("accessing memory...");
+    printf("*addr = %lx\n", *addr);
+
+    printf("*addr = 43\n");
+    *addr = 43;
+    printf("*addr = %lu\n", *addr);
+
 
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");

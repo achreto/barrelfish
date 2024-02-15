@@ -341,7 +341,7 @@ relocate_stack(lvaddr_t offset)
     __asm volatile("add %[stack], %%rsp\n\t"
                    : /* No output */
                    : [stack] "er" (offset)
-                   : 
+                   :
                    );
 }
 
@@ -484,7 +484,6 @@ static void  __attribute__ ((noreturn, noinline)) text_init(void)
 
     // do not remove/change this printf: needed by regression harness
     printf("Barrelfish CPU driver starting on x86_64 apic_id %u\n", apic_id);
-
 
     if(apic_is_bsp()) {
         // Initialize classic (8259A) PIC
@@ -644,7 +643,6 @@ void arch_init(uint64_t magic, void *pointer)
         glbl_core_data->cmdline = mb->cmdline;
         glbl_core_data->mmap_length = mb->mmap_length;
         glbl_core_data->mmap_addr = mb->mmap_addr;
-
     } else { /* No multiboot info, use the core_data struct */
         struct x86_core_data *core_data =
             (struct x86_core_data*)(dest - BASE_PAGE_SIZE);

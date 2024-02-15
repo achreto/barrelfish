@@ -127,6 +127,7 @@ let
                 "arch/x86_64/vmx_vmkit.c",
                 "arch/x86_64/svm_vmkit.c",
                 "arch/x86_64/page_mappings_arch.c",
+                "arch/x86_64/mmap.c",
                 "arch/x86/apic.c",
                 "arch/x86/pic.c",
                 "arch/x86/pit.c",
@@ -577,7 +578,7 @@ let
         "cpio"
     ]
     },
-  
+
   --
   -- ARM Virtual Machine Cortex-A57 ARMv8-A, (qemu)
   --
@@ -625,7 +626,7 @@ let
         "cpio"
     ]
     },
-  
+
   --
   -- Raspberry Pi quad Cortex-A53
   --
@@ -672,7 +673,7 @@ let
         "cpio"
     ]
     },
-  
+
   --
   -- Cavium ThunderX CN88xx series SoC,
   --

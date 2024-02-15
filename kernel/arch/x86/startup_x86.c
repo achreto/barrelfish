@@ -492,6 +492,13 @@ void kernel_startup(void)
         /* Initialize the location to allocate phys memory from */
         bsp_init_alloc_addr = glbl_core_data->start_free_ram;
 
+
+extern void debug_mmap_init(lpaddr_t new_mem_base, size_t mem_bytes);
+        #define MIN_SIZE (16 * BASE_PAGE_SIZE)
+        debug_mmap_init( bsp_alloc_phys_aligned(MIN_SIZE, BASE_PAGE_SIZE), MIN_SIZE);
+
+
+
         /* allocate initial KCB */
         kcb_current = (struct kcb *) local_phys_to_mem(bsp_alloc_phys(sizeof(*kcb_current)));
         memset(kcb_current, 0, sizeof(*kcb_current));
