@@ -21,6 +21,25 @@
 #include <arbutus/x8664pdir_unit.h>
 #include <arbutus/x8664pagetable_unit.h>
 
+#define VA_START (1UL << 41)
+
+static errval_t new_frame(MyFrame *frame, size_t size)
+{
+    errval_t err;
+    err = frame_alloc(&frame->cap, BASE_PAGE_SIZE, NULL);
+    if (err_is_fail(err)) {
+        return err_push(err, LIB_ERR_FRAME_ALLOC);
+    }
+
+    err = slot_alloc(&frame->mapping);
+    if (err_is_fail(err)) {
+        cap_destroy(frame->cap);
+        return err_push(err, LIB_ERR_SLOT_ALLOC);
+    }
+    return SYS_ERR_OK;
+}
+
+
 int main(int argc, char *argv[])
 {
     errval_t err;
@@ -31,18 +50,11 @@ int main(int argc, char *argv[])
 
 
     // allocate some frame
-    MyFrame frame = { 0 };
-    err = frame_alloc(&frame.cap, BASE_PAGE_SIZE, NULL);
+    MyFrame frame;
+    err = new_frame(&frame, BASE_PAGE_SIZE);
     if (err_is_fail(err)) {
-        USER_PANIC_ERR(err, "frame_alloc failed");
+        USER_PANIC_ERR(err, "could not allocate frame");
     }
-
-    err = slot_alloc(&frame.mapping);
-    if (err_is_fail(err)) {
-        USER_PANIC_ERR(err, "slot_alloc failed");
-    }
-
-
 
     // create the vnode to the vroot
     MyVNode vnode = { 0 };
@@ -52,13 +64,8 @@ int main(int argc, char *argv[])
     x8664pml4__t pml4;
     x8664pml4_init(&pml4, vnode);
 
-    flags_t flgs = {0};
-    flgs.readable = 1;
-    flgs.writable = 1;
-    flgs.usermode = 1;
+    flags_t flgs = {.readable = 1, .writable = 1, .usermode = 1};
 
-
-    #define VA_START (1UL << 41)
     printf("Mapping the frame at address 0x%lx\n", VA_START);
     size_t sz = x8664pml4_map(&pml4, VA_START, BASE_PAGE_SIZE, flgs, frame);
     if (sz != BASE_PAGE_SIZE) {
