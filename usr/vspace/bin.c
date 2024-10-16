@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 
     printf("accessing memory...");
-    printf("*addr = %lx\n", *addr);
+    printf("*addr = %lu\n", *addr);
 
     printf("*addr = 43\n");
     *addr = 43;
