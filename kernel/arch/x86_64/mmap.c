@@ -19,11 +19,11 @@
 #include <barrelfish_kpi/syscalls.h>
 #include <barrelfish_kpi/sys_debug.h>
 
-#include <arbutus-monolyth/types.h>
-#include <arbutus-monolyth/x8664pml4_unit.h>
-#include <arbutus-monolyth/x8664pdpt_unit.h>
-#include <arbutus-monolyth/x8664pdir_unit.h>
-#include <arbutus-monolyth/x8664pagetable_unit.h>
+#include <velosiraptor-monolyth/types.h>
+#include <velosiraptor-monolyth/x8664pml4_unit.h>
+#include <velosiraptor-monolyth/x8664pdpt_unit.h>
+#include <velosiraptor-monolyth/x8664pdir_unit.h>
+#include <velosiraptor-monolyth/x8664pagetable_unit.h>
 #include <myos.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,6 @@ static inline lpaddr_t paging_x86_64_read_cr3(void)
 
 
 paddr_t memory_alloc(size_t sz, paddr_t align) {
-    printf("debug_mmap:memory_alloc\n");
     assert(align == BASE_PAGE_SIZE && (sz & (align - 1)) == 0);
     if (mem_base + sz > mem_limit) {
         printf("debug_mmap:no memory!\n");
@@ -71,12 +70,12 @@ void memory_free(paddr_t pa, size_t sz) {
 
 struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa);
 struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa) {
-    printf("debug_mmap: va = %lx, sz = %zu kB, pa = %lx\n", va, sz >> 10, pa);
+    // printf("debug_mmap: va = %lx, sz = %zu kB, pa = %lx\n", va, sz >> 10, pa);
 
     lpaddr_t pml4_base = paging_x86_64_read_cr3();
-    printf("debug_mmap: cr3 = %lx\n", pml4_base);
+    // printf("debug_mmap: cr3 = %lx\n", pml4_base);
     pml4_base = pml4_base & 0x0000fffffffff000;
-    printf("debug_mmap: pml4_base = %lx\n", pml4_base);
+    // printf("debug_mmap: pml4_base = %lx\n", pml4_base);
 
     x8664pml4__t pml4;
     x8664pml4_init(&pml4, pml4_base);

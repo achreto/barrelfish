@@ -11,7 +11,7 @@
 #define MYOS_OSSPEC_H_ 1
 
 #include <barrelfish/barrelfish.h>
-#include <arbutus/types.h>
+#include <velosiraptor/types.h>
 
 #define MyErrval errval_t
 

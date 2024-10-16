@@ -82,7 +82,7 @@
 // OS Spec constant definitions
 
 /// Defined constant `FOO`
-/// @loc: examples/osspec/barrelfish_kernel.vrs:1:1
+/// @loc: examples/osspec/barrelfish_user.vrs:1:1
 #define FOO (uint64_t)(0x4d2)
 
 #endif // X86_64_PAGETABLE_CONSTS_H_

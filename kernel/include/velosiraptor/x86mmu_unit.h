@@ -52,10 +52,10 @@ static inline bool x86mmu_is_valid(x86mmu__t * unit) {
 
 /// Returns true if the mapping is valid
 static inline paddr_t x86mmu_do_translate(x86mmu__t * unit, vaddr_t va) {
-    uint64_t state_cr3_address_val;
-    state_cr3_address_val = x86mmu_cr3_address__rd(unit);
     uint64_t state_cr4_enabled_val;
     state_cr4_enabled_val = x86mmu_cr4_enabled__rd(unit);
+    uint64_t state_cr3_address_val;
+    state_cr3_address_val = x86mmu_cr3_address__rd(unit);
     // asserts for the requires clauses
     assert((va < 0x1000000000000));
     assert(x86mmu_is_valid(unit));

@@ -28,7 +28,7 @@
 //  --------------------------- Constants / Constructor -------------------------
 
 /// Unit Type `X8664PDPTEntry`
-/// @loc: ../../examples/x86_64_pagetable.vrs:366:1
+/// @loc: examples/x86_64_pagetable.vrs:378:1
 struct x8664pdptentry {
     uintptr_t base;
 };

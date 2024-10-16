@@ -109,15 +109,15 @@ MyErrval my_vnode_map(MyCapref dest, MyCapref src, vaddr_t va, flags_t attr, gen
     switch (thecap.type) {
         case ObjType_VNode_x86_64_pdpt:
             slot = (va >> 39) & 0x1ff;
-            printf("mapping of a pdpt into a pml4 [ %u ] %lu\n", slot, X86_64_PML4_BASE(va));
+            // printf("mapping of a pdpt into a pml4 [ %u ] %lu\n", slot, X86_64_PML4_BASE(va));
             break;
         case ObjType_VNode_x86_64_pdir:
             slot = (va >> 30) & 0x1ff;
-            printf("mapping of a pdir into a pdpt [ %u ] %lu.\n", slot, X86_64_PDPT_BASE(va));
+            // printf("mapping of a pdir into a pdpt [ %u ] %lu.\n", slot, X86_64_PDPT_BASE(va));
             break;
         case ObjType_VNode_x86_64_ptable:
             slot = (va >> 21) & 0x1ff;
-            printf("mapping of a ptable into a pdir [ %u ] %lu.\n", slot, X86_64_PDIR_BASE(va));
+            // printf("mapping of a ptable into a pdir [ %u ] %lu.\n", slot, X86_64_PDIR_BASE(va));
             break;
         case ObjType_Frame:
             if (sz == BASE_PAGE_SIZE) {
@@ -129,7 +129,7 @@ MyErrval my_vnode_map(MyCapref dest, MyCapref src, vaddr_t va, flags_t attr, gen
             } else {
                 USER_PANIC("invalid va");
             }
-            printf("mapping of a frame [ %u ].\n", slot);
+            // printf("mapping of a frame [ %u ].\n", slot);
             break;
         default:
             USER_PANIC("unkown type");

@@ -16,10 +16,10 @@
 #include <stdio.h>
 
 #include <myos.h>
-#include <arbutus/x8664pml4_unit.h>
-#include <arbutus/x8664pdpt_unit.h>
-#include <arbutus/x8664pdir_unit.h>
-#include <arbutus/x8664pagetable_unit.h>
+#include <velosiraptor/x8664pml4_unit.h>
+#include <velosiraptor/x8664pdpt_unit.h>
+#include <velosiraptor/x8664pdir_unit.h>
+#include <velosiraptor/x8664pagetable_unit.h>
 
 #define VA_START (1UL << 41)
 
@@ -53,9 +53,15 @@ int main(int argc, char *argv[])
     errval_t err;
 
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("Velosiraptor Test: Starting\n");
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 
+    debug_printf("Velosiraptor Test: Successfully booted with Velosiraptor mapping handlers in cpudriver\n");
+
+
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("Velosiraptor Test: Mapping the frame at address 0x%lx\n", VA_START);
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 
     // allocate some frame
     MyFrame frame;
@@ -74,7 +80,6 @@ int main(int argc, char *argv[])
 
     flags_t flgs = {.readable = 1, .writable = 1, .usermode = 1};
 
-    printf("Mapping the frame at address 0x%lx\n", VA_START);
     size_t sz = x8664pml4_map(&pml4, VA_START, BASE_PAGE_SIZE, flgs, frame);
     if (sz != BASE_PAGE_SIZE) {
         USER_PANIC("x8664pml4_map failed");
@@ -83,17 +88,18 @@ int main(int argc, char *argv[])
     debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 
-    printf("accessing memory...");
+    debug_printf("Velosiraptor Test: accessing memory...\n");
     uint64_t *addr = (uint64_t *)VA_START;
-    printf("*addr = %lx\n", *addr);
+    debug_printf("*addr = %lx\n", *addr);
 
-    printf("*addr = 42\n");
+    debug_printf("*addr = 42\n");
     *addr = 42;
-    printf("*addr = %lu\n", *addr);
+    debug_printf("*addr = %lu\n", *addr);
 
+    debug_printf("Velosiraptor Test: Successfully exercised user-space mappings\n");
 
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("Velosiraptor Test: Exercising Monolythic Mappings\n");
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 
     struct frame_identity thecap;
@@ -110,18 +116,19 @@ int main(int argc, char *argv[])
     debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     debug_printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 
-    printf("accessing memory...");
-    printf("*addr = %lu\n", *addr);
+    debug_printf("Velosiraptor Test: accessing memory...\n");
+    debug_printf("*addr = %lu\n", *addr);
 
-    printf("*addr = 43\n");
+    debug_printf("*addr = 43\n");
     *addr = 43;
-    printf("*addr = %lu\n", *addr);
+    debug_printf("*addr = %lu\n", *addr);
+
+    debug_printf("Velosiraptor Test: Successfully exercised monolithic mappings\n");
 
 
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
-    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("Velosiraptor Test: Successfull\n");
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
 
-    printf("Hello, world!\n");
     return 0;
 }

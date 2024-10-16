@@ -34,7 +34,7 @@
 #define x8664pagetable_child__t MyFrame
 
 /// Unit Type `X8664PageTable`
-/// @loc: ../../examples/x86_64_pagetable.vrs:173:1
+/// @loc: examples/x86_64_pagetable.vrs:174:1
 struct x8664pagetable {
     MyVNode vnode;
     x8664pagetable_child__t * children[512];
@@ -111,7 +111,6 @@ static inline size_t x8664pagetable_map(x8664pagetable__t * unit, vaddr_t va, si
     if ((mapping == NULL)) {
         return 0x0;
     }
-
     if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, pa.cap, va, flgs, 0x0, sz, pa.mapping))) {
         // mapping successful: add to bookkeeping
         *(mapping) = pa;

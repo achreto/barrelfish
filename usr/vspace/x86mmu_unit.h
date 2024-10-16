@@ -30,7 +30,7 @@
 // The unit does not define any constants
 
 /// Unit Type `X86MMU`
-/// @loc: ../../examples/x86_64_pagetable.vrs:409:1
+/// @loc: examples/x86_64_pagetable.vrs:426:1
 struct x86mmu {
     MyVNode vnode;
     x8664pml4__t * child;
@@ -91,8 +91,8 @@ static inline size_t __x86mmu_do_map(x86mmu__t * unit, vaddr_t va, size_t sz, fl
     if (!(((0x0 & 0xfff) == 0x0))) {
         return 0x0;
     }
-    if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, (((pa)->base).vnode).cap, va, flgs, 0x0, sz, (((pa)->base).vnode).mapping))) {
-        x86mmu_set_child(unit, va, (pa)->base);
+    if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, ((pa)->vnode).cap, va, flgs, 0x0, sz, ((pa)->vnode).mapping))) {
+        x86mmu_set_child(unit, va, pa);
         return sz;
     } else  {
         return 0x0;

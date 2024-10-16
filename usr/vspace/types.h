@@ -39,9 +39,9 @@ typedef struct flags flags_t;
 // All defined root group units
 
 enum UnitType {
-    UnitType_X8664PDir,
     UnitType_X8664PML4,
     UnitType_X8664PageTable,
+    UnitType_X8664PDir,
     UnitType_X86MMU,
     UnitType_X8664PDPT};
 

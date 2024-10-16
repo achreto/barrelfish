@@ -33,10 +33,10 @@
 #define MEMORY_OFFSET X86_64_MEMORY_OFFSET
 #endif
 
-#include <arbutus/x8664pml4_unit.h>
-#include <arbutus/x8664pdpt_unit.h>
-#include <arbutus/x8664pdir_unit.h>
-#include <arbutus/x8664pagetable_unit.h>
+#include <velosiraptor/x8664pml4_unit.h>
+#include <velosiraptor/x8664pdpt_unit.h>
+#include <velosiraptor/x8664pdir_unit.h>
+#include <velosiraptor/x8664pagetable_unit.h>
 
 
 

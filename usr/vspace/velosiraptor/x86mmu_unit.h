@@ -21,8 +21,6 @@
 
 #include "x8664pml4_unit.h"
 
-#include "x86mmu_interface.h"
-
 #include "consts.h"
 
 #include "types.h"
@@ -31,10 +29,19 @@
 
 // The unit does not define any constants
 
+/// Unit Type `X86MMU`
+/// @loc: examples/x86_64_pagetable.vrs:426:1
+struct x86mmu {
+    MyVNode vnode;
+    x8664pml4__t * child;
+};
+
+typedef struct x86mmu x86mmu__t;
+
 /// constructor of the unit type
-static inline void x86mmu_init(x86mmu__t * unit, paddr_t base) {
+static inline void x86mmu_init(x86mmu__t * unit, x8664pml4__t * child) {
     memset(unit, 0x0, sizeof(*(unit)));
-    (unit)->base = base;
+    (unit)->child = child;
 }
 
 //  ----------------------------- Allocate and free ----------------------------
@@ -47,33 +54,22 @@ static inline void x86mmu_init(x86mmu__t * unit, paddr_t base) {
 
 /// Returns true if the mapping is valid
 static inline bool x86mmu_is_valid(x86mmu__t * unit) {
-    return true;
+    return ((unit)->child != NULL);
 }
 
-/// Returns true if the mapping is valid
-static inline paddr_t x86mmu_do_translate(x86mmu__t * unit, vaddr_t va) {
-    uint64_t state_cr3_address_val;
-    state_cr3_address_val = x86mmu_cr3_address__rd(unit);
-    uint64_t state_cr4_enabled_val;
-    state_cr4_enabled_val = x86mmu_cr4_enabled__rd(unit);
-    // asserts for the requires clauses
-    assert((va < 0x1000000000000));
-    assert(x86mmu_is_valid(unit));
-    return ((state_cr4_enabled_val == 0x1)) ? (((state_cr3_address_val << 0xc) + va)) : (va);
+/// Sets the child pointer of the unit
+static inline void x86mmu_set_child(x86mmu__t * unit, vaddr_t va, x8664pml4__t * dst) {
+    (unit)->child = dst;
 }
 
-// No set-child function needed as no environment spec available.
+/// Sets the child pointer of the unit
+static inline void x86mmu_clear_child(x86mmu__t * unit, vaddr_t va) {
+    x86mmu_set_child(unit, va, NULL);
+}
 
 /// Gets the child pointer of the unit
-static inline x8664pml4__t x86mmu_get_child(x86mmu__t * unit, vaddr_t va) {
-    assert(x86mmu_is_valid(unit));
-    // get the address of the next table by calling translate
-    paddr_t next_base;
-    next_base = x86mmu_do_translate(unit, 0x0);
-    // construct the new unit
-    x8664pml4__t next_unit;
-    x8664pml4_init(&(next_unit), next_base);
-    return next_unit;
+static inline x8664pml4__t * x86mmu_get_child(x86mmu__t * unit, vaddr_t va) {
+    return (unit)->child;
 }
 
 //  ---------------------------- Map / Protect/ Unmap ---------------------------
@@ -95,78 +91,78 @@ static inline size_t __x86mmu_do_map(x86mmu__t * unit, vaddr_t va, size_t sz, fl
     if (!(((0x0 & 0xfff) == 0x0))) {
         return 0x0;
     }
-    // field variables
-    x86mmu_cr3__t cr3 = x86mmu_cr3__set_raw(0x0);
-    x86mmu_cr4__t cr4 = x86mmu_cr4__set_raw(0x0);
-    // configuration sequence
-    cr3 = x86mmu_cr3__set_raw(0x0);
-    cr3 = x86mmu_cr3_address__insert(cr3, (((pa)->base >> 0xc) & 0xfffffffff));
-    x86mmu_cr3__wr(unit, cr3);
-    cr4 = x86mmu_cr4__rd(unit);
-    cr4 = x86mmu_cr4_enabled__insert(cr4, 0x1);
-    x86mmu_cr4__wr(unit, cr4);
-    return sz;
+    if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, ((pa)->vnode).cap, va, flgs, 0x0, sz, ((pa)->vnode).mapping))) {
+        x86mmu_set_child(unit, va, pa);
+        return sz;
+    } else  {
+        return 0x0;
+    }
 }
 
 /// Performs the synth fn unmap(va: vaddr, sz: size) -> ()
 ///   requires true; operation on the unit
 static inline size_t __x86mmu_do_unmap(x86mmu__t * unit, vaddr_t va, size_t sz) {
-    // field variables
-    // configuration sequence
-    return sz;
+    if (errval_to_bool(my_vnode_unmap(((unit)->vnode).cap, get_mapping_for_va(va)))) {
+        x86mmu_clear_child(unit, va);
+        return sz;
+    } else  {
+        return 0x0;
+    }
 }
 
 /// Performs the synth fn protect(va: vaddr, sz: size, flgs: flags) -> ()
 ///   requires true; operation on the unit
 static inline size_t __x86mmu_do_protect(x86mmu__t * unit, vaddr_t va, size_t sz, flags_t flgs) {
-    // field variables
-    // configuration sequence
-    return sz;
+    if (errval_to_bool(my_vnode_modify_flags(((unit)->vnode).cap, va, sz, flgs))) {
+        return sz;
+    } else  {
+        return 0x0;
+    }
 }
 
 //  --------------------------- Higher Order Functions --------------------------
 
 /// Higher-order map function
-static inline size_t x86mmu_map(x86mmu__t * unit, vaddr_t va, size_t sz, flags_t flgs, paddr_t pa) {
-    x8664pml4__t next_unit;
+static inline size_t x86mmu_map(x86mmu__t * unit, vaddr_t va, size_t sz, flags_t flgs, MyFrame pa) {
     if (!(x86mmu_is_valid(unit))) {
         // Allocate the next-level structure
-        x8664pml4_alloc(&(next_unit));
-        // TODO: Check whether allocation has succeeded!
-        __x86mmu_do_map(unit, 0x0, 0x1000000000000, DEFAULT_FLAGS, &(next_unit));
-    } else  {
-        next_unit = x86mmu_get_child(unit, 0x0);
+        x8664pml4_alloc(&((unit)->child));
+        if (((unit)->child == NULL)) {
+            return 0x0;
+        }
+        // TODO: Map new child child
+        if ((__x86mmu_do_map(unit, 0x0, 0x1000000000000, DEFAULT_FLAGS, (unit)->child) == 0x0)) {
+            return 0x0;
+        }
     }
-    return x8664pml4_map(&(next_unit), va, sz, flgs, pa);
+    return x8664pml4_map((unit)->child, va, sz, flgs, pa);
 }
 
 /// Higher-order protect function
 static inline size_t x86mmu_protect(x86mmu__t * unit, vaddr_t va, size_t sz, flags_t flgs) {
-    x8664pml4__t next_unit;
     if (!(x86mmu_is_valid(unit))) {
         return 0x0;
     }
+    x8664pml4__t * next_unit;
     next_unit = x86mmu_get_child(unit, 0x0);
-    return x8664pml4_protect(&(next_unit), va, sz, flgs);
+    return x8664pml4_protect(next_unit, va, sz, flgs);
 }
 
 /// Higher-order unmap function
 static inline size_t x86mmu_unmap(x86mmu__t * unit, vaddr_t va, size_t sz) {
-    x8664pml4__t next_unit;
     if (!(x86mmu_is_valid(unit))) {
         return 0x0;
     }
+    x8664pml4__t * next_unit;
     next_unit = x86mmu_get_child(unit, 0x0);
-    return x8664pml4_unmap(&(next_unit), va, sz);
+    return x8664pml4_unmap(next_unit, va, sz);
 }
 
-static inline bool x86mmu_resolve(x86mmu__t * unit, vaddr_t va, paddr_t * pa) {
+static inline bool x86mmu_resolve(x86mmu__t * unit, vaddr_t va, MyFrame * * pa) {
     if (!(x86mmu_is_valid(unit))) {
         return false;
     }
-    x8664pml4__t next_unit;
-    next_unit = x86mmu_get_child(unit, 0x0);
-    return x86mmu_resolve(unit, va, pa);
+    return x8664pml4_resolve((unit)->child, va, pa);
 }
 
 #endif // X86MMU_UNIT_H_

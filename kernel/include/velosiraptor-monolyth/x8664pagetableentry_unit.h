@@ -66,6 +66,7 @@ static inline paddr_t x8664pagetableentry_do_translate(x8664pagetableentry__t * 
 /// Performs the synth fn map(va: vaddr, sz: size, flgs: flags, pa: paddr) -> ()
 ///   requires sz == 0x1000;
 ///   requires va == 0x0;
+///   requires (pa + 0x1000) <= 0x1000000000000;
 ///   requires (pa & 0xfff) == 0x0; operation on the unit
 static inline size_t __x8664pagetableentry_do_map(x8664pagetableentry__t * unit, vaddr_t va, size_t sz, flags_t flgs, paddr_t pa) {
     // requires sz == 0x1000
@@ -76,6 +77,10 @@ static inline size_t __x8664pagetableentry_do_map(x8664pagetableentry__t * unit,
     if (!((va == 0x0))) {
         return 0x0;
     }
+    // requires (pa + 0x1000) <= 0x1000000000000
+    if (!(((pa + 0x1000) <= 0x1000000000000))) {
+        return 0x0;
+    }
     // requires (pa & 0xfff) == 0x0
     if (!(((pa & 0xfff) == 0x0))) {
         return 0x0;
@@ -83,9 +88,12 @@ static inline size_t __x8664pagetableentry_do_map(x8664pagetableentry__t * unit,
     // field variables
     x8664pagetableentry_entry__t entry = x8664pagetableentry_entry__set_raw(0x0);
     // configuration sequence
-    entry = x8664pagetableentry_entry__set_raw(0x0);
+    entry = x8664pagetableentry_entry__rd(unit);
     entry = x8664pagetableentry_entry_address__insert(entry, ((pa >> 0xc) & 0xfffffffff));
     entry = x8664pagetableentry_entry_present__insert(entry, 0x1);
+    entry = x8664pagetableentry_entry_g__insert(entry, 0x0);
+    entry = x8664pagetableentry_entry_pat__insert(entry, 0x0);
+    entry = x8664pagetableentry_entry_res0__insert(entry, 0x0);
     entry = x8664pagetableentry_entry_xd__insert(entry, !((flgs).executable));
     entry = x8664pagetableentry_entry_us__insert(entry, (flgs).usermode);
     entry = x8664pagetableentry_entry_pcd__insert(entry, (flgs).devicemem);
@@ -101,7 +109,7 @@ static inline size_t __x8664pagetableentry_do_unmap(x8664pagetableentry__t * uni
     // field variables
     x8664pagetableentry_entry__t entry = x8664pagetableentry_entry__set_raw(0x0);
     // configuration sequence
-    entry = x8664pagetableentry_entry__rd(unit);
+    entry = x8664pagetableentry_entry__set_raw(0x0);
     entry = x8664pagetableentry_entry_present__insert(entry, 0x0);
     x8664pagetableentry_entry__wr(unit, entry);
     return sz;

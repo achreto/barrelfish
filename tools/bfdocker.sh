@@ -11,7 +11,7 @@
 ##########################################################################
 
 # set the default docker image to use
-BF_DOCKER="achreto/barrelfish-aos:22.04-lts"
+BF_DOCKER="achreto/barrelfish-ci:20.04-lts"
 
 # assume the source directory is the current directory
 BF_SOURCE=$(git rev-parse --show-toplevel)

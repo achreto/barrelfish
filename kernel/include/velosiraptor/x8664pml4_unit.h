@@ -34,7 +34,7 @@
 //  -------------------------------- Constructor --------------------------------
 
 /// Unit Type `X8664PML4`
-/// @loc: ../../examples/x86_64_pagetable.vrs:395:1
+/// @loc: examples/x86_64_pagetable.vrs:412:1
 struct x8664pml4 {
     uintptr_t base;
 };
@@ -61,7 +61,6 @@ static inline x8664pml4entry__t x8664pml4_get_child(x8664pml4__t * unit, vaddr_t
     assert((va < 0x1000000000000));
     size_t idx;
     idx = (va >> 0x27);
-    assert(idx < 512);
     x8664pml4entry__t child_unit;
     x8664pml4entry_init(&(child_unit), ((idx * 0x8) + (unit)->base));
     return child_unit;

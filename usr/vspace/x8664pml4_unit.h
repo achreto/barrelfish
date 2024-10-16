@@ -36,7 +36,7 @@
 #define x8664pml4_child__t x8664pdpt__t
 
 /// Unit Type `X8664PML4`
-/// @loc: ../../examples/x86_64_pagetable.vrs:395:1
+/// @loc: examples/x86_64_pagetable.vrs:412:1
 struct x8664pml4 {
     MyVNode vnode;
     x8664pml4_child__t * children[512];

@@ -53,7 +53,7 @@ struct x8664pdir_child {
 typedef struct x8664pdir_child x8664pdir_child__t;
 
 /// Unit Type `X8664PDir`
-/// @loc: ../../examples/x86_64_pagetable.vrs:267:1
+/// @loc: examples/x86_64_pagetable.vrs:274:1
 struct x8664pdir {
     MyVNode vnode;
     x8664pdir_child__t * children[512];
@@ -127,18 +127,6 @@ static inline size_t x8664pdir_map(x8664pdir__t * unit, vaddr_t va, size_t sz, f
             // couldn't allocate any memory, cannot map!
             return 0x0;
         }
-        if ((((sz == 0x200000) && (va == 0x0)) && ((frame_to_paddr(pa) & 0x1fffff) == 0x0))) {
-            if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, pa.cap, va, flgs, 0x0, sz, pa.mapping))) {
-                // mapping successful: add to bookkeeping
-                (mapping)->kind = X8664PDIRENTRYPAGE;
-                ((mapping)->variants).x8664pdirentrypage = pa;
-                x8664pdir_set_child(unit, va, mapping);
-                return 0x200000;
-            } else  {
-                os_virt_free((uintptr_t)(mapping), sizeof(*(mapping)));
-                return 0x0;
-            }
-        }
         // Allocate a new table for the mapping
         (mapping)->kind = X8664PDIRENTRYTABLE;
         (((mapping)->variants).x8664pdirentrytable).vnode = os_vnode_alloc(UnitType_X8664PageTable);
@@ -152,18 +140,30 @@ static inline size_t x8664pdir_map(x8664pdir__t * unit, vaddr_t va, size_t sz, f
             os_virt_free((uintptr_t)(mapping), sizeof(*(mapping)));
             return 0x0;
         }
+        if ((((sz == 0x200000) && (va == 0x0)) && ((frame_to_paddr(pa) & 0x1fffff) == 0x0))) {
+            if (errval_to_bool(my_vnode_map(((unit)->vnode).cap, pa.cap, va, flgs, 0x0, sz, pa.mapping))) {
+                // mapping successful: add to bookkeeping
+                (mapping)->kind = X8664PDIRENTRYPAGE;
+                ((mapping)->variants).x8664pdirentrypage = pa;
+                x8664pdir_set_child(unit, va, mapping);
+                return 0x200000;
+            } else  {
+                os_virt_free((uintptr_t)(mapping), sizeof(*(mapping)));
+                return 0x0;
+            }
+        }
     }
     switch ((child)->kind) {
-    case X8664PDIRENTRYPAGE:
-    {
-        // there was a frame mapped already, return error
-        return 0x0;
-    }
-    break;
     case X8664PDIRENTRYTABLE:
     {
         // this is a table mapping, recurse to next unit
         return x8664pagetable_map(&(((child)->variants).x8664pdirentrytable), va, sz, flgs, pa);
+    }
+    break;
+    case X8664PDIRENTRYPAGE:
+    {
+        // there was a frame mapped already, return error
+        return 0x0;
     }
     break;
     }
@@ -179,6 +179,12 @@ static inline size_t x8664pdir_protect(x8664pdir__t * unit, vaddr_t va, size_t s
         return 0x0;
     }
     switch ((child)->kind) {
+    case X8664PDIRENTRYTABLE:
+    {
+        // this is a table mapping, recurse to next unit
+        return x8664pagetable_protect(&(((child)->variants).x8664pdirentrytable), va, sz, flgs);
+    }
+    break;
     case X8664PDIRENTRYPAGE:
     {
         // this is a frame mapping. check if size matches
@@ -188,12 +194,6 @@ static inline size_t x8664pdir_protect(x8664pdir__t * unit, vaddr_t va, size_t s
         if (errval_to_bool(my_vnode_modify_flags(((unit)->vnode).cap, va, sz, flgs))) {
             return 0x200000;
         }
-    }
-    break;
-    case X8664PDIRENTRYTABLE:
-    {
-        // this is a table mapping, recurse to next unit
-        return x8664pagetable_protect(&(((child)->variants).x8664pdirentrytable), va, sz, flgs);
     }
     break;
     }
@@ -209,6 +209,12 @@ static inline size_t x8664pdir_unmap(x8664pdir__t * unit, vaddr_t va, size_t sz)
         return 0x200000;
     }
     switch ((child)->kind) {
+    case X8664PDIRENTRYTABLE:
+    {
+        // this is a table mapping, recurse to next unit
+        return x8664pagetable_unmap(&(((child)->variants).x8664pdirentrytable), va, sz);
+    }
+    break;
     case X8664PDIRENTRYPAGE:
     {
         // this is a frame mapping. check if size matches
@@ -220,12 +226,6 @@ static inline size_t x8664pdir_unmap(x8664pdir__t * unit, vaddr_t va, size_t sz)
             os_virt_free((uintptr_t)(child), sizeof(*(child)));
             return 0x200000;
         }
-    }
-    break;
-    case X8664PDIRENTRYTABLE:
-    {
-        // this is a table mapping, recurse to next unit
-        return x8664pagetable_unmap(&(((child)->variants).x8664pdirentrytable), va, sz);
     }
     break;
     }

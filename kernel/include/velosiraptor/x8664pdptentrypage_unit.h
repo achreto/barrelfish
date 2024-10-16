@@ -52,10 +52,10 @@ static inline bool x8664pdptentrypage_is_valid(x8664pdptentrypage__t * unit) {
 
 /// Returns true if the mapping is valid
 static inline paddr_t x8664pdptentrypage_do_translate(x8664pdptentrypage__t * unit, vaddr_t va) {
-    uint64_t state_entry_ps_val;
-    state_entry_ps_val = x8664pdptentrypage_entry_ps__rd(unit);
     uint64_t state_entry_address_val;
     state_entry_address_val = x8664pdptentrypage_entry_address__rd(unit);
+    uint64_t state_entry_ps_val;
+    state_entry_ps_val = x8664pdptentrypage_entry_ps__rd(unit);
     // asserts for the requires clauses
     assert((state_entry_ps_val == 0x1));
     assert(x8664pdptentrypage_is_valid(unit));
@@ -86,10 +86,14 @@ static inline size_t __x8664pdptentrypage_do_map(x8664pdptentrypage__t * unit, v
     // field variables
     x8664pdptentrypage_entry__t entry = x8664pdptentrypage_entry__set_raw(0x0);
     // configuration sequence
-    entry = x8664pdptentrypage_entry__set_raw(0x0);
+    entry = x8664pdptentrypage_entry__rd(unit);
     entry = x8664pdptentrypage_entry_address__insert(entry, ((pa >> 0x1e) & 0x3ffff));
     entry = x8664pdptentrypage_entry_ps__insert(entry, 0x1);
     entry = x8664pdptentrypage_entry_present__insert(entry, 0x1);
+    entry = x8664pdptentrypage_entry_g__insert(entry, 0x0);
+    entry = x8664pdptentrypage_entry_pat__insert(entry, 0x0);
+    entry = x8664pdptentrypage_entry_res0_1__insert(entry, 0x0);
+    entry = x8664pdptentrypage_entry_res0_0__insert(entry, 0x0);
     entry = x8664pdptentrypage_entry_xd__insert(entry, !((flgs).executable));
     entry = x8664pdptentrypage_entry_us__insert(entry, (flgs).usermode);
     entry = x8664pdptentrypage_entry_pcd__insert(entry, (flgs).devicemem);
