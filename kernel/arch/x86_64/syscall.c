@@ -1808,9 +1808,24 @@ struct sysret sys_vmcall(uint64_t syscall, uint64_t arg0, uint64_t arg1,
         case DEBUG_GET_APIC_TICKS_PER_SEC:
             retval.value = timing_get_apic_ticks_per_sec();
             break;
+        case DEBUG_MMAP_FIXED: {
+            extern struct sysret debug_mmap_fixed(lvaddr_t va, size_t sz, lpaddr_t pa);
+            retval = debug_mmap_fixed(arg1, args[0], args[1]);
+            break;
+        }
         case DEBUG_MMAP: {
-            extern struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa);
+            extern struct sysret debug_mmap(lvaddr_t va, size_t sz, uint64_t flags);
             retval = debug_mmap(arg1, args[0], args[1]);
+            break;
+        }
+        case DEBUG_MUNMAP: {
+            extern struct sysret debug_munmmap(lvaddr_t va, size_t sz);
+            retval = debug_munmmap(arg1, args[0]);
+            break;
+        }
+        case DEBUG_MPROTECT: {
+            extern struct sysret debug_mprotect(lvaddr_t va, size_t sz, uint64_t flags);
+            retval = debug_mprotect(arg1, args[0], args[1]);
             break;
         }
 

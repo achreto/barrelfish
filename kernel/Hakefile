@@ -157,7 +157,7 @@ let
                          "lpc_rtc",
                          "lpc_timer",
                          "vtd"],
-     addLibraries = [ "elf_kernel" ]
+     addLibraries = [ "elf_kernel", "verif_pt" ]
      },
   --
   -- Intel Xeon Phi (K1OM)
@@ -202,7 +202,7 @@ let
                          "xapic",
                          "cpuid",
                          "xeon_phi/xeon_phi_serial" ],
-     addLibraries = [ "elf_kernel" ]
+     addLibraries = [ "elf_kernel", "verif_pt" ]
      },
 
   --

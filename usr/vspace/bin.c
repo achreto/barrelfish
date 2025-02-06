@@ -41,12 +41,25 @@ static errval_t new_frame(MyFrame *frame, size_t size)
 
 #include <barrelfish_kpi/syscalls.h>
 #include <barrelfish_kpi/sys_debug.h>
-static errval_t sys_debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa)
+static errval_t sys_debug_mmap_fixed(lvaddr_t va, size_t sz, lpaddr_t pa)
 {
-    return syscall5(SYSCALL_DEBUG, DEBUG_MMAP, va, sz, pa).error;
+    return syscall5(SYSCALL_DEBUG, DEBUG_MMAP_FIXED, va, sz, pa).error;
 }
 
+static errval_t sys_debug_mmap(lvaddr_t va, size_t sz, uint64_t flags)
+{
+    return syscall5(SYSCALL_DEBUG, DEBUG_MMAP, va, sz, flags).error;
+}
 
+static errval_t sys_debug_munmap(lvaddr_t va, size_t sz)
+{
+    return syscall4(SYSCALL_DEBUG, DEBUG_MUNMAP, va, sz).error;
+}
+
+static errval_t sys_debug_mprotec(lvaddr_t va, size_t sz, uint64_t flags)
+{
+    return syscall5(SYSCALL_DEBUG, DEBUG_MPROTECT, va, sz, flags).error;
+}
 
 int main(int argc, char *argv[])
 {
@@ -108,7 +121,7 @@ int main(int argc, char *argv[])
         USER_PANIC_ERR(err, "could not identify the frame");
     }
     addr = (uint64_t *)(VA_START << 1);
-    err = sys_debug_mmap((lvaddr_t)addr, BASE_PAGE_SIZE, thecap.base);
+    err = sys_debug_mmap_fixed((lvaddr_t)addr, BASE_PAGE_SIZE, thecap.base);
     if (err_is_fail(err)) {
         USER_PANIC_ERR(err, "could not allocate frame");
     }
@@ -129,6 +142,15 @@ int main(int argc, char *argv[])
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     debug_printf("Velosiraptor Test: Successfull\n");
     debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+
+
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+    debug_printf("Verified MMAP Stuff\n");
+    debug_printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
+
+    sys_debug_mmap(VA_START, BASE_PAGE_SIZE, 0x3);
+    sys_debug_mprotec(VA_START, BASE_PAGE_SIZE, 0x1);
+    sys_debug_munmap(VA_START, BASE_PAGE_SIZE);
 
     return 0;
 }

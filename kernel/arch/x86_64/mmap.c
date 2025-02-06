@@ -26,9 +26,18 @@
 #include <velosiraptor-monolyth/x8664pagetable_unit.h>
 #include <myos.h>
 
+
+/// verified page table implementations
+extern int64_t v_x8664pml4_map(void *st, uint64_t vaddr, uint64_t sz, uint64_t flags);
+extern int64_t v_x8664pml4_unmap(void *st, uint64_t vaddr, uint64_t sz);
+extern int64_t v_x8664pml4_protect(void *st, uint64_t vaddr, uint64_t sz, uint64_t flags);
+
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // !!! A HACK TO SEE WHETHER THE MONOLYTIC GENERATED CODE WORKS!
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 static lpaddr_t mem_base;
 static lpaddr_t mem_limit;
@@ -68,8 +77,8 @@ void memory_free(paddr_t pa, size_t sz) {
 }
 
 
-struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa);
-struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa) {
+struct sysret debug_mmap_fixed(lvaddr_t va, size_t sz, lpaddr_t pa);
+struct sysret debug_mmap_fixed(lvaddr_t va, size_t sz, lpaddr_t pa) {
     // printf("debug_mmap: va = %lx, sz = %zu kB, pa = %lx\n", va, sz >> 10, pa);
 
     lpaddr_t pml4_base = paging_x86_64_read_cr3();
@@ -87,3 +96,25 @@ struct sysret debug_mmap(lvaddr_t va, size_t sz, lpaddr_t pa) {
         return (struct sysret){ /*error*/ SYS_ERR_VM_MAP_RIGHTS, /*value*/ -1 };
     }
 }
+
+struct sysret debug_mmap(lvaddr_t va, size_t sz, uint64_t flags);
+struct sysret debug_mmap(lvaddr_t va, size_t sz, uint64_t flags) {
+    printf("debug_mmap: va = %lx, sz = %zu kB, flags = %lx\n", va, sz >> 10, flags);
+    int64_t r = v_x8664pml4_map(NULL, va, sz, flags);
+    return (struct sysret){ /*error*/ SYS_ERR_OK, /*value*/ r };
+}
+
+struct sysret debug_munmmap(lvaddr_t va, size_t sz);
+struct sysret debug_munmmap(lvaddr_t va, size_t sz) {
+    printf("debug_munmmap: va = %lx, sz = %zu kB\n", va, sz >> 10);
+    int64_t r = v_x8664pml4_unmap(NULL, va, sz);
+    return (struct sysret){ /*error*/ SYS_ERR_OK, /*value*/ r};
+}
+
+struct sysret debug_mprotect(lvaddr_t va, size_t sz, uint64_t flags);
+struct sysret debug_mprotect(lvaddr_t va, size_t sz, uint64_t flags) {
+    printf("debug_mprotect: va = %lx, sz = %zu kB, flags = %lx\n", va, sz >> 10, flags);
+    int64_t r = v_x8664pml4_protect(NULL, va, sz, flags);
+    return (struct sysret){ /*error*/ SYS_ERR_OK, /*value*/ r };
+}
+

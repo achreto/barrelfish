@@ -1,0 +1,24 @@
+--
+--  libverif_pt.a: $(VERIFIED_PAGE_TABLE_PATH)/target/release/libverif_pt.a.marker
+--      cp $(VERIFIED_PAGE_TABLE_PATH)/target/release/libverif_pt.a .
+--
+--  $(VERIFIED_PAGE_TABLE_PATH)/target/release/libverif_pt.a.marker:
+--      (cd $(VERIFIED_PAGE_TABLE_PATH) && cargo build --release > /dev/null)
+--
+[
+  Rule [
+    Str "cp",
+    In BFSrcTree "root" "../../../verified-nrkernel/page-table/target/release/libverif_pt.a",
+    -- Dep BuildTree "x86_64" "/lib/libverif_pt.a.marker",
+    Out "x86_64" "/lib/libverif_pt.a"
+  ],
+  Rule [
+    NStr "@echo \"Building verified page table library\"",
+    -- disabled for now, do this manually
+    -- Str "(cd ",
+    -- In BFSrcTree "root" "../../../verified-nrkernel/page-table/",
+    -- Str "&& cargo build --release > /dev/null)",
+    Target "x86_64" "/lib/libverif_pt.a.marker"
+  ]
+]
+
