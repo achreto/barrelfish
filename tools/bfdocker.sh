@@ -77,6 +77,7 @@ mkdir -p $BF_BUILD
 # permission problems later.
 docker run -u $(id -u) $DOCKER_ARGS \
     --mount type=bind,source=$BF_SOURCE,target=/source \
+    --mount type=bind,source=${BF_SOURCE}/../verified-nrkernel,target=/verified-nrkernel \
     $BF_DOCKER "$@"
 
 
