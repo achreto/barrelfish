@@ -260,9 +260,9 @@ int startup(uint32_t magic, struct multiboot_info *mb)
 
     // Look for the kernel to boot, which may have several names
     struct multiboot_modinfo *kernel;
-    kernel = multiboot_find_module("cpu");
+    kernel = multiboot_find_module("boot_x86_64_boot");
     if (kernel == NULL) {
-        kernel = multiboot_find_module("kernel");
+        kernel = multiboot_find_module("cpu");
     }
 
     // Reserve a page before kernel start

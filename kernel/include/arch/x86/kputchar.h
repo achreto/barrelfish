@@ -15,7 +15,7 @@
 #ifndef KERNEL_ARCH_X86_KPUTCHAR_H
 #define KERNEL_ARCH_X86_KPUTCHAR_H
 
-#include <arch/x86/conio.h>
+// #include <arch/x86/conio.h>
 #include <serial.h>
 #include <arch/x86/global.h>
 
@@ -39,7 +39,7 @@ kputchar(int c)
         //delay(200000000);
     }
 
-    conio_putchar(c);
+    // conio_putchar(c);
     serial_console_putchar(c);
     return c;
 }
