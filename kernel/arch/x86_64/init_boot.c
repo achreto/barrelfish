@@ -186,6 +186,172 @@ union segment_descriptor gdt[] __attribute__ ((aligned (4))) = {
 union segment_descriptor *ldt_descriptor = &gdt[LDT_LO_SEL];
 
 
+/**
+ * Simple 2-level paging structures for basic memory management.
+ * This is a simplified version for demonstration purposes.
+ */
+
+/**
+ * Page Directory Pointer Table (PDPT) - Level 1
+ * Contains entries pointing to Page Directories
+ */
+static union x86_64_pdir_entry simple_pdpt[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+/**
+ * Page Directory (PD) - Level 2  
+ * Contains entries pointing to 2MB large pages
+ */
+static union x86_64_ptable_entry simple_pdir[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+/**
+ * \brief Setup simple 2-level paging structure.
+ *
+ * This function sets up a basic 2-level paging structure that identity maps
+ * the first 1GB of physical memory using 2MB large pages.
+ * Level 1: PDPT (Page Directory Pointer Table)
+ * Level 2: PD (Page Directory) with large pages
+ */
+static void simple_paging_init(void)
+{
+    printf("Setting up simple 2-level paging...\n");
+    
+    // Clear the paging structures
+    memset(simple_pdpt, 0, sizeof(simple_pdpt));
+    memset(simple_pdir, 0, sizeof(simple_pdir));
+    
+    // Set up PDPT entry 0 to point to our Page Directory
+    paging_x86_64_map_table(&simple_pdpt[0], (lpaddr_t)simple_pdir);
+    
+    // Set up Page Directory entries to map first 1GB using 2MB large pages
+    // This creates 512 entries of 2MB each = 1GB total
+    for (int i = 0; i < PTABLE_SIZE; i++) {
+        lpaddr_t phys_addr = (lpaddr_t)i * X86_64_MEM_PAGE_SIZE; // 2MB increments
+        
+        // Map each 2MB page with present, read/write, and large page flags
+        paging_x86_64_map_large(&simple_pdir[i], phys_addr, 
+                                PTABLE_PRESENT | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    }
+    
+    printf("2-level paging structure initialized.\n");
+
+    uint64_t cr3_value = (uint64_t)simple_pdpt;
+    
+    printf("Loading page tables, setting CR3 to 0x%lx\n", cr3_value);
+    
+    __asm__ volatile (
+        "movq %0, %%cr3"
+        :
+        : "r" (cr3_value)
+        : "memory"
+    );
+    
+    printf("Page tables loaded successfully\n");
+}
+
+static void page_table_write_test(void)
+{
+    printf("Performing page table write test...\n");
+    __asm__ volatile ("cli");
+    
+    // Test writing to a specific page directory entry
+    // Let's modify the entry for virtual address 0x400000 (4MB)
+    int pdir_index = 2; // This maps virtual address 0x400000 (2 * 2MB)
+    lpaddr_t test_phys_addr = 0x800000; // Map to physical address 8MB
+    
+    printf("Original PD[%d] entry: 0x%lx\n", pdir_index, simple_pdir[pdir_index].raw);
+    
+    // Write new mapping to page directory entry
+    paging_x86_64_map_large(&simple_pdir[pdir_index], test_phys_addr,
+                            PTABLE_PRESENT | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    __asm__ volatile (
+        "movq %%cr3, %%rax\n\t"
+        "movq %%rax, %%cr3"
+        :
+        :
+        : "rax", "memory"
+    );
+    
+    printf("Modified PD[%d] entry: 0x%lx\n", pdir_index, simple_pdir[pdir_index].raw);
+    printf("This entry now maps virtual 0x400000 to physical 0x%lx\n", test_phys_addr);
+    
+    // Display some page table statistics
+    int present_entries = 0;
+    for (int i = 0; i < PTABLE_SIZE; i++) {
+        if (simple_pdir[i].raw & PTABLE_PRESENT) {
+            present_entries++;
+        }
+    }
+    
+    printf("Page table statistics:\n");
+    printf("  - Total PD entries: %ld\n", PTABLE_SIZE);
+    printf("  - Present entries: %d\n", present_entries);
+    printf("  - Memory mapped: %d MB\n", present_entries * 2);
+    printf("  - PDPT address: 0x%lx\n", (uint64_t)simple_pdpt);
+    printf("  - PD address: 0x%lx\n", (uint64_t)simple_pdir);
+    
+    printf("Page table write test completed.\n");
+}
+
+/**
+ * \brief Test reading from virtual address 0x400000
+ *
+ * This function attempts to read from virtual address 0x400000 to verify
+ * that our page table mappings are working correctly.
+ */
+static void virtual_address_read_test(void)
+{
+    printf("Performing virtual address read test...\n");
+    
+    volatile uint64_t *test_addr = (volatile uint64_t *)0x400000;
+    uint64_t read_value = 0;
+    
+    printf("Attempting to read from virtual address 0x400000...\n");
+    
+    // First, let's write a test pattern to the physical address that 0x400000 maps to
+    // According to our mapping, 0x400000 should map to physical 0x800000
+    volatile uint64_t *phys_addr = (volatile uint64_t *)0x400000;
+    uint64_t test_pattern = 0xDEADBEEFCAFEBABE;
+    
+    printf("Writing test pattern 0x%lx to physical address 0x%lx\n", 
+           test_pattern, (uint64_t)phys_addr);
+    *phys_addr = test_pattern;
+    
+    // Now try to read from the virtual address
+    printf("Reading from virtual address 0x%lx...\n", (uint64_t)test_addr);
+    
+    __asm__ volatile (
+        "movq (%1), %0"
+        : "=r" (read_value)
+        : "r" (test_addr)
+        : "memory"
+    );
+    
+    printf("Read value: 0x%lx\n", read_value);
+    
+    if (read_value == test_pattern) {
+        printf("SUCCESS: Virtual address translation working correctly!\n");
+        printf("Virtual 0x400000 correctly maps to physical 0x800000\n");
+    } else {
+        printf("WARNING: Read value (0x%lx) doesn't match written pattern (0x%lx)\n", 
+               read_value, test_pattern);
+        printf("This might indicate a problem with the page table mapping\n");
+    }
+    
+    // Additional verification - check page table entries
+    printf("\nPage table verification:\n");
+    printf("PDPT[0] entry: 0x%lx (should point to PD)\n", simple_pdpt[0].raw);
+    printf("PD[2] entry: 0x%lx (should map to 0x800000 with flags)\n", simple_pdir[2].raw);
+    
+    // Decode the PD entry to show the physical address
+    if (simple_pdir[2].raw & PTABLE_PRESENT) {
+        lpaddr_t mapped_phys = simple_pdir[2].raw & X86_64_LARGE_PAGE_MASK;
+        printf("PD[2] maps to physical address: 0x%lx\n", mapped_phys);
+    }
+    
+    printf("Virtual address read test completed.\n");
+}
 
 
 
@@ -266,6 +432,12 @@ void arch_init(uint64_t magic, void *pointer)
     printf("Kernel starting at address 0x%"PRIxLVADDR"\n",
            local_phys_to_mem(dest));
 
-    printf("Booting Test done. Halting...\n");
+    printf("Booting Test done.\n");
+    
+    simple_paging_init();
+
+    page_table_write_test();
+
+    virtual_address_read_test();
     halt();
 }
