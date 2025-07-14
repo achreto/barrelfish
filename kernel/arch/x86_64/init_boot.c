@@ -47,9 +47,22 @@
 #include <dev/ia32_dev.h>
 #include <dev/amd64_dev.h>
 
+#define AP_BOOT_ADDR    0x8000  // Physical address for AP boot code (32KB)
+#define AP_STARTING_UP  1
+#define AP_STARTED      2
+#define APIC_ICR_LO  0x300
+#define APIC_ICR_HI  0x310
+
+extern uint8_t x86_64_start_ap_end[];
+extern uint8_t x86_64_init_ap_absolute_entry[];
+extern uint8_t x86_64_init_ap_global[];
+extern uint8_t x86_64_init_ap_lock[];
 
 struct global *global;
 coreid_t my_core_id = 0;
+
+volatile uint32_t *ap_wait_ptr = NULL;
+volatile uint8_t *ap_lock_ptr = NULL;
 
 /**
  * Used to store the address of global struct passed during boot across kernel
@@ -185,6 +198,14 @@ union segment_descriptor gdt[] __attribute__ ((aligned (4))) = {
 
 union segment_descriptor *ldt_descriptor = &gdt[LDT_LO_SEL];
 
+static void busy_wait_cycles(uint64_t cycles)
+{
+    uint64_t start, now;
+    __asm__ volatile ("rdtsc" : "=A" (start));
+    do {
+        __asm__ volatile ("rdtsc" : "=A" (now));
+    } while ((now - start) < cycles);
+}
 
 /**
  * Simple 2-level paging structures for basic memory management.
@@ -353,7 +374,74 @@ static void virtual_address_read_test(void)
     printf("Virtual address read test completed.\n");
 }
 
+static void send_init_ipi(uint8_t target_apic_id) {
+    apic_send_init_assert(target_apic_id, 0);   // Assert INIT IPI
+    busy_wait_cycles(20000000);
+    apic_send_init_deassert();                  // Deassert INIT IPI
+}
 
+static void send_sipi_ipi(uint8_t target_apic_id, uint8_t vector) {
+    apic_send_start_up(target_apic_id, 0, vector);
+}
+
+static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
+    uint8_t *trampoline = (uint8_t *)AP_BOOT_ADDR;
+    memcpy(trampoline, (uint8_t *)x86_64_start_ap, (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap);
+
+    // Patch the absolute entry point (where AP jumps in long mode)
+    uint64_t offset = (uint64_t)x86_64_init_ap_absolute_entry - (uint64_t)x86_64_start_ap;
+    volatile uint64_t *absolute_entry_ptr = (volatile uint64_t *)(trampoline + offset);
+    *absolute_entry_ptr = entry;
+
+    // Patch the global pointer if needed
+    offset = (uint64_t)x86_64_init_ap_global - (uint64_t)x86_64_start_ap;
+    volatile uint64_t *ap_global_ptr = (volatile uint64_t *)(trampoline + offset);
+    *ap_global_ptr = (uint64_t)global;
+
+    // Patch the wait and lock variables
+    offset = (uint64_t)x86_64_init_ap_wait - (uint64_t)x86_64_start_ap;
+    ap_wait_ptr = (volatile uint32_t *)(trampoline + offset);
+    *ap_wait_ptr = AP_STARTING_UP;
+
+    offset = (uint64_t)x86_64_init_ap_lock - (uint64_t)x86_64_start_ap;
+    ap_lock_ptr = (volatile uint8_t *)(trampoline + offset);
+    *ap_lock_ptr = 0;
+
+    // Send INIT IPI
+    send_init_ipi(target_apic_id);
+    for (volatile int i = 0; i < 100000; i++); // Short delay
+
+    // Send SIPI twice
+    uint8_t vector = AP_BOOT_ADDR >> 12;
+    send_sipi_ipi(target_apic_id, vector);
+    for (volatile int i = 0; i < 20000; i++); // Short delay
+    send_sipi_ipi(target_apic_id, vector);
+
+    // Wait for AP to set the lock variable
+    for (uint64_t i = 0; i < STARTUP_TIMEOUT; i++) {
+        if (*ap_lock_ptr != 0) {
+            break;
+        }
+    }
+
+    // Check if AP started
+    if (*ap_lock_ptr != 0) {
+        while (*ap_wait_ptr != AP_STARTED);
+        *ap_lock_ptr = 0;
+        return true;
+    }
+
+    printf("APIC ID %d did not start\n", target_apic_id);
+    return false;
+}
+
+void ap_entry_point(void) {
+    printf("AP running on core %d!\n", my_core_id);
+    // Signal that this AP has started
+    *ap_wait_ptr = AP_STARTED;
+    // Enter main AP loop or scheduler
+    halt();
+}
 
 
 /**
@@ -439,5 +527,15 @@ void arch_init(uint64_t magic, void *pointer)
     page_table_write_test();
 
     virtual_address_read_test();
+
+    for (uint8_t target_apic_id = 1; target_apic_id <= 3; target_apic_id++) {
+        printf("Starting AP with APIC ID %d...\n", target_apic_id);
+        if (start_ap(target_apic_id, (uint64_t)ap_entry_point)) {
+            printf("AP %d started successfully!\n", target_apic_id);
+        } else {
+            printf("Failed to start AP %d\n", target_apic_id);
+        }
+    }
+
     halt();
 }

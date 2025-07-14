@@ -22,6 +22,8 @@
 
 extern bool idt_initialized;
 
+void ap_entry_point(void) __attribute__ ((noreturn));
+
 void arch_init(uint64_t magic, void *pointer) __attribute__ ((noreturn));
 
 /**
