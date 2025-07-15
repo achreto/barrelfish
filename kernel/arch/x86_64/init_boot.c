@@ -35,7 +35,6 @@
 #include <arch/x86/rtc.h>
 #include <target/x86/barrelfish_kpi/coredata_target.h>
 #include <arch/x86/timing.h>
-#include <arch/x86/startup_x86.h>
 #include <arch/x86/start_aps.h>
 #include <arch/x86/ipi_notify.h>
 #include <barrelfish_kpi/cpu_arch.h>
@@ -53,9 +52,11 @@
 #define APIC_ICR_LO  0x300
 #define APIC_ICR_HI  0x310
 
+extern uint8_t x86_64_start_ap[];
 extern uint8_t x86_64_start_ap_end[];
 extern uint8_t x86_64_init_ap_absolute_entry[];
 extern uint8_t x86_64_init_ap_global[];
+extern uint8_t x86_64_init_ap_wait[];
 extern uint8_t x86_64_init_ap_lock[];
 
 struct global *global;
@@ -386,6 +387,23 @@ static void send_sipi_ipi(uint8_t target_apic_id, uint8_t vector) {
 
 static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
     uint8_t *trampoline = (uint8_t *)AP_BOOT_ADDR;
+    // Print the values of trampoline, start and size
+    uint8_t *start = (uint8_t *)x86_64_start_ap;
+    size_t size = (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap;
+    printf("Trampoline address: 0x%lx\n", (uint64_t)trampoline);
+    printf("Start address:      0x%lx\n", (uint64_t)start);
+    printf("Start_ap_end address:      0x%lx\n", (uint64_t)x86_64_start_ap_end);
+    printf("Trampoline size:    0x%lx\n", (uint64_t)size);
+
+    // Check for possible overlap
+    uint8_t *trampoline_end = trampoline + size;
+    uint8_t *start_end = start + size;
+    bool overlap = (trampoline < start_end) && (start < trampoline_end);
+    if (overlap) {
+        printf("WARNING: Trampoline and start_ap code regions overlap!\n");
+    } else {
+        printf("No overlap between trampoline and start_ap code regions.\n");
+    }
     memcpy(trampoline, (uint8_t *)x86_64_start_ap, (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap);
 
     // Patch the absolute entry point (where AP jumps in long mode)
