@@ -39,4 +39,7 @@ errval_t debug_get_mdb_size(size_t *retval);
 /* print mapping database operation counters */
 errval_t debug_print_mdb_counters(void);
 
+
+errval_t debug_pt_model_test(void);
+
 #endif

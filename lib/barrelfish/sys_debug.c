@@ -110,3 +110,7 @@ errval_t sys_debug_create_irq_src_cap(struct capref cap, uint64_t start,
     return sr.error;
 }
 
+errval_t sys_debug_run_pt_model_test(void)
+{
+    return syscall2(SYSCALL_DEBUG, DEBUG_PT_MODEL_TEST).error;
+}

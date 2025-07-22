@@ -168,3 +168,4 @@ debug_print_mdb_counters(void)
     mdb_print_counters(my_core_id);
     return SYS_ERR_OK;
 }
+

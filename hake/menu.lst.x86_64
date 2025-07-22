@@ -31,21 +31,14 @@ module  /x86_64/sbin/spawnd boot
 module  /x86_64/sbin/proc_mgmt boot
 #bootapic-x86_64=1-15
 module  /x86_64/sbin/startd boot
-module /x86_64/sbin/routing_setup boot
+# module /x86_64/sbin/routing_setup boot
 
 # Drivers
-module /x86_64/sbin/pci auto
 module /x86_64/sbin/corectrl auto
-module /x86_64/sbin/ahcid auto
-#module /x86_64/sbin/iommu
-module /x86_64/sbin/serial_pc16550d auto
-module /x86_64/sbin/hpet auto
 
-## For networking
-module /x86_64/sbin/e1000n auto
-module /x86_64/sbin/net_sockets_server nospawn
+# model driver
+module /x86_64/sbin/pt_model_driver core=1 auto
+module /x86_64/sbin/pt_model_driver core=2 auto
+module /x86_64/sbin/pt_model_driver core=3 auto
 
-# General user domains
-module  /x86_64/sbin/fish nospawn
-module	/x86_64/sbin/angler serial0.terminal xterm
 

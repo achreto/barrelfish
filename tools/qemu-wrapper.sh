@@ -24,7 +24,7 @@ BIOS="/home/netos/tftpboot/QEMU_EFI.fd"
 # Grab SMP from env, if unset default to 1
 SMP=${SMP:-4}
 # Grab the MEMORY from the enf
-MEMORY=${MEMORY:-4G}
+MEMORY=${MEMORY:-8G}
 # Grab the KVM fenable from the env
 KVM=${KVM:-"-enable-kvm"}
 
@@ -225,12 +225,7 @@ case "$ARCH" in
         -smp ${SMP} \
         -m ${MEMORY} ${HUGEMEMOBJ} \
         ${KVM} \
-        -cpu host,migratable=no,+invtsc,+tsc,+x2apic,+fsgsbase \
-        -netdev user,id=network0 \
-        -device $NIC_MODEL,netdev=network0 \
-        -device ahci,id=ahci \
-        -device ide-drive,drive=disk,bus=ahci.0 \
-        -drive id=disk,file="$HDFILE",if=none"
+        -cpu host,migratable=no,+invtsc,+tsc,+x2apic,+fsgsbase"
     QEMU_NONDEBUG=-nographic
     GDB=gdb-multiarch
     echo "Creating hard disk image $HDFILE"

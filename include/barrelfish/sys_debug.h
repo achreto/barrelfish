@@ -50,6 +50,8 @@ errval_t sys_debug_create_irq_src_cap(struct capref cap, uint64_t start, uint64_
 errval_t sys_debug_get_mdb_size(size_t *size);
 errval_t sys_debug_print_mdb_counters(void);
 
+errval_t sys_debug_run_pt_model_test(void);
+
 #ifdef ENABLE_FEIGN_FRAME_CAP
 errval_t sys_debug_feign_frame_cap(struct capref slot, lpaddr_t base,
                                    uint8_t bits);

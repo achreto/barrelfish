@@ -1839,6 +1839,10 @@ struct sysret sys_vmcall(uint64_t syscall, uint64_t arg0, uint64_t arg1,
             retval.error = debug_print_mdb_counters();
             break;
 
+        case DEBUG_PT_MODEL_TEST:
+            retval.error = debug_pt_model_test();
+            break;
+
         default:
             printk(LOG_ERR, "invalid sys_debug msg type\n");
         }
