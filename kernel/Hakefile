@@ -120,14 +120,19 @@ let
         "../usr/drivers/cpuboot/arch/x86/init_ap_x86_64.S",
         "../usr/drivers/cpuboot/arch/x86/init_ap_x86_32.S" ],
      cFiles = [
-      "arch/x86_64/init_boot.c",
-      "arch/x86/serial.c",
-      "memset.c",
-      "memmove.c",
-      "printf.c",
-      "stdlib.c",
-      "string.c",
-      "logging.c"
+         "arch/x86_64/init_boot.c",
+         "arch/x86/serial.c",
+         "arch/x86/apic.c",
+         "arch/x86_64/paging.c",
+         "arch/x86/timing.c",
+         "arch/x86/rtc.c",
+         "systime.c",
+         "memset.c",
+         "memmove.c",
+         "printf.c",
+         "stdlib.c",
+         "string.c",
+         "logging.c"
      ],
       mackerelDevices = [
         "lpc_pic",

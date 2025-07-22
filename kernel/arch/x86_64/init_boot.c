@@ -35,7 +35,6 @@
 #include <arch/x86/rtc.h>
 #include <target/x86/barrelfish_kpi/coredata_target.h>
 #include <arch/x86/timing.h>
-#include <arch/x86/startup_x86.h>
 #include <arch/x86/start_aps.h>
 #include <arch/x86/ipi_notify.h>
 #include <barrelfish_kpi/cpu_arch.h>
@@ -47,9 +46,24 @@
 #include <dev/ia32_dev.h>
 #include <dev/amd64_dev.h>
 
+#define AP_BOOT_ADDR    0x8000  // Physical address for AP boot code (32KB)
+#define AP_STARTING_UP  1
+#define AP_STARTED      2
+#define APIC_ICR_LO  0x300
+#define APIC_ICR_HI  0x310
+
+extern uint8_t x86_64_start_ap[];
+extern uint8_t x86_64_start_ap_end[];
+extern uint8_t x86_64_init_ap_absolute_entry[];
+extern uint8_t x86_64_init_ap_global[];
+extern uint8_t x86_64_init_ap_wait[];
+extern uint8_t x86_64_init_ap_lock[];
 
 struct global *global;
 coreid_t my_core_id = 0;
+
+volatile uint32_t *ap_wait_ptr = NULL;
+volatile uint8_t *ap_lock_ptr = NULL;
 
 /**
  * Used to store the address of global struct passed during boot across kernel
@@ -185,9 +199,267 @@ union segment_descriptor gdt[] __attribute__ ((aligned (4))) = {
 
 union segment_descriptor *ldt_descriptor = &gdt[LDT_LO_SEL];
 
+static void busy_wait_cycles(uint64_t cycles)
+{
+    uint64_t start, now;
+    __asm__ volatile ("rdtsc" : "=A" (start));
+    do {
+        __asm__ volatile ("rdtsc" : "=A" (now));
+    } while ((now - start) < cycles);
+}
 
+/**
+ * Simple 2-level paging structures for basic memory management.
+ * This is a simplified version for demonstration purposes.
+ */
 
+/**
+ * Page Directory Pointer Table (PDPT) - Level 1
+ * Contains entries pointing to Page Directories
+ */
+static union x86_64_pdir_entry simple_pdpt[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
 
+/**
+ * Page Directory (PD) - Level 2  
+ * Contains entries pointing to 2MB large pages
+ */
+static union x86_64_ptable_entry simple_pdir[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+/**
+ * \brief Setup simple 2-level paging structure.
+ *
+ * This function sets up a basic 2-level paging structure that identity maps
+ * the first 1GB of physical memory using 2MB large pages.
+ * Level 1: PDPT (Page Directory Pointer Table)
+ * Level 2: PD (Page Directory) with large pages
+ */
+static void simple_paging_init(void)
+{
+    printf("Setting up simple 2-level paging...\n");
+    
+    // Clear the paging structures
+    memset(simple_pdpt, 0, sizeof(simple_pdpt));
+    memset(simple_pdir, 0, sizeof(simple_pdir));
+    
+    // Set up PDPT entry 0 to point to our Page Directory
+    paging_x86_64_map_table(&simple_pdpt[0], (lpaddr_t)simple_pdir);
+    
+    // Set up Page Directory entries to map first 1GB using 2MB large pages
+    // This creates 512 entries of 2MB each = 1GB total
+    for (int i = 0; i < PTABLE_SIZE; i++) {
+        lpaddr_t phys_addr = (lpaddr_t)i * X86_64_MEM_PAGE_SIZE; // 2MB increments
+        
+        // Map each 2MB page with present, read/write, and large page flags
+        paging_x86_64_map_large(&simple_pdir[i], phys_addr, 
+                                PTABLE_PRESENT | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    }
+    
+    printf("2-level paging structure initialized.\n");
+
+    uint64_t cr3_value = (uint64_t)simple_pdpt;
+    
+    printf("Loading page tables, setting CR3 to 0x%lx\n", cr3_value);
+    
+    __asm__ volatile (
+        "movq %0, %%cr3"
+        :
+        : "r" (cr3_value)
+        : "memory"
+    );
+    
+    printf("Page tables loaded successfully\n");
+}
+
+static void page_table_write_test(void)
+{
+    printf("Performing page table write test...\n");
+    __asm__ volatile ("cli");
+    
+    // Test writing to a specific page directory entry
+    // Let's modify the entry for virtual address 0x400000 (4MB)
+    int pdir_index = 2; // This maps virtual address 0x400000 (2 * 2MB)
+    lpaddr_t test_phys_addr = 0x800000; // Map to physical address 8MB
+    
+    printf("Original PD[%d] entry: 0x%lx\n", pdir_index, simple_pdir[pdir_index].raw);
+    
+    // Write new mapping to page directory entry
+    paging_x86_64_map_large(&simple_pdir[pdir_index], test_phys_addr,
+                            PTABLE_PRESENT | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    __asm__ volatile (
+        "movq %%cr3, %%rax\n\t"
+        "movq %%rax, %%cr3"
+        :
+        :
+        : "rax", "memory"
+    );
+    
+    printf("Modified PD[%d] entry: 0x%lx\n", pdir_index, simple_pdir[pdir_index].raw);
+    printf("This entry now maps virtual 0x400000 to physical 0x%lx\n", test_phys_addr);
+    
+    // Display some page table statistics
+    int present_entries = 0;
+    for (int i = 0; i < PTABLE_SIZE; i++) {
+        if (simple_pdir[i].raw & PTABLE_PRESENT) {
+            present_entries++;
+        }
+    }
+    
+    printf("Page table statistics:\n");
+    printf("  - Total PD entries: %ld\n", PTABLE_SIZE);
+    printf("  - Present entries: %d\n", present_entries);
+    printf("  - Memory mapped: %d MB\n", present_entries * 2);
+    printf("  - PDPT address: 0x%lx\n", (uint64_t)simple_pdpt);
+    printf("  - PD address: 0x%lx\n", (uint64_t)simple_pdir);
+    
+    printf("Page table write test completed.\n");
+}
+
+/**
+ * \brief Test reading from virtual address 0x400000
+ *
+ * This function attempts to read from virtual address 0x400000 to verify
+ * that our page table mappings are working correctly.
+ */
+static void virtual_address_read_test(void)
+{
+    printf("Performing virtual address read test...\n");
+    
+    volatile uint64_t *test_addr = (volatile uint64_t *)0x400000;
+    uint64_t read_value = 0;
+    
+    printf("Attempting to read from virtual address 0x400000...\n");
+    
+    // First, let's write a test pattern to the physical address that 0x400000 maps to
+    // According to our mapping, 0x400000 should map to physical 0x800000
+    volatile uint64_t *phys_addr = (volatile uint64_t *)0x400000;
+    uint64_t test_pattern = 0xDEADBEEFCAFEBABE;
+    
+    printf("Writing test pattern 0x%lx to physical address 0x%lx\n", 
+           test_pattern, (uint64_t)phys_addr);
+    *phys_addr = test_pattern;
+    
+    // Now try to read from the virtual address
+    printf("Reading from virtual address 0x%lx...\n", (uint64_t)test_addr);
+    
+    __asm__ volatile (
+        "movq (%1), %0"
+        : "=r" (read_value)
+        : "r" (test_addr)
+        : "memory"
+    );
+    
+    printf("Read value: 0x%lx\n", read_value);
+    
+    if (read_value == test_pattern) {
+        printf("SUCCESS: Virtual address translation working correctly!\n");
+        printf("Virtual 0x400000 correctly maps to physical 0x800000\n");
+    } else {
+        printf("WARNING: Read value (0x%lx) doesn't match written pattern (0x%lx)\n", 
+               read_value, test_pattern);
+        printf("This might indicate a problem with the page table mapping\n");
+    }
+    
+    // Additional verification - check page table entries
+    printf("\nPage table verification:\n");
+    printf("PDPT[0] entry: 0x%lx (should point to PD)\n", simple_pdpt[0].raw);
+    printf("PD[2] entry: 0x%lx (should map to 0x800000 with flags)\n", simple_pdir[2].raw);
+    
+    // Decode the PD entry to show the physical address
+    if (simple_pdir[2].raw & PTABLE_PRESENT) {
+        lpaddr_t mapped_phys = simple_pdir[2].raw & X86_64_LARGE_PAGE_MASK;
+        printf("PD[2] maps to physical address: 0x%lx\n", mapped_phys);
+    }
+    
+    printf("Virtual address read test completed.\n");
+}
+
+static void send_init_ipi(uint8_t target_apic_id) {
+    apic_send_init_assert(target_apic_id, 0);   // Assert INIT IPI
+    busy_wait_cycles(20000000);
+    apic_send_init_deassert();                  // Deassert INIT IPI
+}
+
+static void send_sipi_ipi(uint8_t target_apic_id, uint8_t vector) {
+    apic_send_start_up(target_apic_id, 0, vector);
+}
+
+static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
+    uint8_t *trampoline = (uint8_t *)AP_BOOT_ADDR;
+    // Print the values of trampoline, start and size
+    uint8_t *start = (uint8_t *)x86_64_start_ap;
+    size_t size = (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap;
+    printf("Trampoline address: 0x%lx\n", (uint64_t)trampoline);
+    printf("Start address:      0x%lx\n", (uint64_t)start);
+    printf("Start_ap_end address:      0x%lx\n", (uint64_t)x86_64_start_ap_end);
+    printf("Trampoline size:    0x%lx\n", (uint64_t)size);
+
+    // Check for possible overlap
+    uint8_t *trampoline_end = trampoline + size;
+    uint8_t *start_end = start + size;
+    bool overlap = (trampoline < start_end) && (start < trampoline_end);
+    if (overlap) {
+        printf("WARNING: Trampoline and start_ap code regions overlap!\n");
+    } else {
+        printf("No overlap between trampoline and start_ap code regions.\n");
+    }
+    memcpy(trampoline, (uint8_t *)x86_64_start_ap, (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap);
+
+    // Patch the absolute entry point (where AP jumps in long mode)
+    uint64_t offset = (uint64_t)x86_64_init_ap_absolute_entry - (uint64_t)x86_64_start_ap;
+    volatile uint64_t *absolute_entry_ptr = (volatile uint64_t *)(trampoline + offset);
+    *absolute_entry_ptr = entry;
+
+    // Patch the global pointer if needed
+    offset = (uint64_t)x86_64_init_ap_global - (uint64_t)x86_64_start_ap;
+    volatile uint64_t *ap_global_ptr = (volatile uint64_t *)(trampoline + offset);
+    *ap_global_ptr = (uint64_t)global;
+
+    // Patch the wait and lock variables
+    offset = (uint64_t)x86_64_init_ap_wait - (uint64_t)x86_64_start_ap;
+    ap_wait_ptr = (volatile uint32_t *)(trampoline + offset);
+    *ap_wait_ptr = AP_STARTING_UP;
+
+    offset = (uint64_t)x86_64_init_ap_lock - (uint64_t)x86_64_start_ap;
+    ap_lock_ptr = (volatile uint8_t *)(trampoline + offset);
+    *ap_lock_ptr = 0;
+
+    // Send INIT IPI
+    send_init_ipi(target_apic_id);
+    for (volatile int i = 0; i < 100000; i++); // Short delay
+
+    // Send SIPI twice
+    uint8_t vector = AP_BOOT_ADDR >> 12;
+    send_sipi_ipi(target_apic_id, vector);
+    for (volatile int i = 0; i < 20000; i++); // Short delay
+    send_sipi_ipi(target_apic_id, vector);
+
+    // Wait for AP to set the lock variable
+    for (uint64_t i = 0; i < STARTUP_TIMEOUT; i++) {
+        if (*ap_lock_ptr != 0) {
+            break;
+        }
+    }
+
+    // Check if AP started
+    if (*ap_lock_ptr != 0) {
+        while (*ap_wait_ptr != AP_STARTED);
+        *ap_lock_ptr = 0;
+        return true;
+    }
+
+    printf("APIC ID %d did not start\n", target_apic_id);
+    return false;
+}
+
+void ap_entry_point(void) {
+    printf("AP running on core %d!\n", my_core_id);
+    // Signal that this AP has started
+    *ap_wait_ptr = AP_STARTED;
+    // Enter main AP loop or scheduler
+    halt();
+}
 
 
 /**
@@ -266,6 +538,22 @@ void arch_init(uint64_t magic, void *pointer)
     printf("Kernel starting at address 0x%"PRIxLVADDR"\n",
            local_phys_to_mem(dest));
 
-    printf("Booting Test done. Halting...\n");
+    printf("Booting Test done.\n");
+    
+    simple_paging_init();
+
+    page_table_write_test();
+
+    virtual_address_read_test();
+
+    for (uint8_t target_apic_id = 1; target_apic_id <= 3; target_apic_id++) {
+        printf("Starting AP with APIC ID %d...\n", target_apic_id);
+        if (start_ap(target_apic_id, (uint64_t)ap_entry_point)) {
+            printf("AP %d started successfully!\n", target_apic_id);
+        } else {
+            printf("Failed to start AP %d\n", target_apic_id);
+        }
+    }
+
     halt();
 }

@@ -358,7 +358,7 @@ fi
 
 echo $QEMU_INVOCATION
 set -x
-exit 0
+# exit 0
 eval $QEMU_INVOCATION
 
 if test $? -eq 0; then
