@@ -71,6 +71,9 @@ volatile uint8_t *ap_lock_ptr = NULL;
  */
 static uint64_t addr_global;
 
+/// Current execution dispatcher (when in system call or exception)
+struct dcb *dcb_current = NULL;
+
 /**
  * \brief Kernel stack.
  *
@@ -212,6 +215,8 @@ static void busy_wait_cycles(uint64_t cycles)
  * Simple 2-level paging structures for basic memory management.
  * This is a simplified version for demonstration purposes.
  */
+
+#if 0
 
 /**
  * Page Directory Pointer Table (PDPT) - Level 1
@@ -375,6 +380,8 @@ static void virtual_address_read_test(void)
     printf("Virtual address read test completed.\n");
 }
 
+#endif
+
 static void send_init_ipi(uint8_t target_apic_id) {
     apic_send_init_assert(target_apic_id, 0);   // Assert INIT IPI
     busy_wait_cycles(20000000);
@@ -386,7 +393,9 @@ static void send_sipi_ipi(uint8_t target_apic_id, uint8_t vector) {
 }
 
 static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
-    uint8_t *trampoline = (uint8_t *)AP_BOOT_ADDR;
+
+    assert(target_apic_id != apic_get_id());
+    uint8_t *trampoline = (uint8_t *)X86_64_REAL_MODE_LINEAR_OFFSET;
     // Print the values of trampoline, start and size
     uint8_t *start = (uint8_t *)x86_64_start_ap;
     size_t size = (uint8_t *)x86_64_start_ap_end - (uint8_t *)x86_64_start_ap;
@@ -421,19 +430,28 @@ static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
     ap_wait_ptr = (volatile uint32_t *)(trampoline + offset);
     *ap_wait_ptr = AP_STARTING_UP;
 
+
+
     offset = (uint64_t)x86_64_init_ap_lock - (uint64_t)x86_64_start_ap;
     ap_lock_ptr = (volatile uint8_t *)(trampoline + offset);
     *ap_lock_ptr = 0;
 
     // Send INIT IPI
+    printf("Sending INIT IPI\n");
     send_init_ipi(target_apic_id);
-    for (volatile int i = 0; i < 100000; i++); // Short delay
+    busy_wait_cycles(100000);
+
+    printf("Sendint Startup IPO");
 
     // Send SIPI twice
-    uint8_t vector = AP_BOOT_ADDR >> 12;
+    // uint8_t vector = AP_BOOT_ADDR >> 12;
+    uint8_t vector =  X86_64_REAL_MODE_SEGMENT_TO_REAL_MODE_PAGE(X86_64_REAL_MODE_SEGMENT);
     send_sipi_ipi(target_apic_id, vector);
-    for (volatile int i = 0; i < 20000; i++); // Short delay
+    busy_wait_cycles(100000);
+
     send_sipi_ipi(target_apic_id, vector);
+
+
 
     // Wait for AP to set the lock variable
     for (uint64_t i = 0; i < STARTUP_TIMEOUT; i++) {
@@ -446,20 +464,110 @@ static bool start_ap(uint8_t target_apic_id, uint64_t entry) {
     if (*ap_lock_ptr != 0) {
         while (*ap_wait_ptr != AP_STARTED);
         *ap_lock_ptr = 0;
+
         return true;
     }
 
     printf("APIC ID %d did not start\n", target_apic_id);
+
     return false;
 }
 
 void ap_entry_point(void) {
-    printf("AP running on core %d!\n", my_core_id);
+    printf("AP running on core %d!\n", apic_get_id());
     // Signal that this AP has started
     *ap_wait_ptr = AP_STARTED;
     // Enter main AP loop or scheduler
     halt();
 }
+
+/**
+ * Bootup PML4, used to map both low (identity-mapped) memory and relocated
+ * memory at the same time.
+ */
+static union x86_64_pdir_entry boot_pml4[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+/**
+ * Bootup low-map PDPT and hi-map PDPT.
+ */
+static union x86_64_pdir_entry boot_pdpt[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE)));
+    // boot_pdpt[PTABLE_SIZE] __attribute__ ((aligned(BASE_PAGE_SIZE)));
+    // boot_pdpt_hi[PTABLE_SIZE] __attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+/**
+ * Bootup low-map PDIR, hi-map PDIR, and 1GB PDIR.
+ */
+static union x86_64_ptable_entry boot_pdir[PTABLE_SIZE]
+__attribute__ ((aligned(BASE_PAGE_SIZE))),
+    // boot_pdir_hi[PTABLE_SIZE] __attribute__ ((aligned(BASE_PAGE_SIZE))),
+    boot_pdir_1GB[PTABLE_SIZE] __attribute__ ((aligned(BASE_PAGE_SIZE)));
+
+
+/**
+ * \brief Setup bootup page table.
+ *
+ * This function sets up the page table needed to boot the kernel
+ * proper.  The table identity maps the first 1 GByte of physical
+ * memory in order to have access to various data structures and the
+ * first MByte containing bootloader-passed data structures. It also
+ * identity maps the local copy of the kernel in low memory and
+ * aliases it in kernel address space.
+ *
+ * \param base  Start address of kernel image in physical address space.
+ * \param size  Size of kernel image.
+ */
+static void paging_init(lpaddr_t base, size_t size)
+{
+    lvaddr_t vbase = local_phys_to_mem(base);
+
+    // Align base to kernel page size
+    if(base & X86_64_MEM_PAGE_MASK) {
+        size += base & X86_64_MEM_PAGE_MASK;
+        base -= base & X86_64_MEM_PAGE_MASK;
+    }
+
+    // Align vbase to kernel page size
+    if(vbase & X86_64_MEM_PAGE_MASK) {
+        vbase -= vbase & X86_64_MEM_PAGE_MASK;
+    }
+
+    // Align size to kernel page size
+    if(size & X86_64_MEM_PAGE_MASK) {
+        size += X86_64_MEM_PAGE_SIZE - (size & X86_64_MEM_PAGE_MASK);
+    }
+
+    // XXX: Cannot currently map more than one table of pages
+    assert(size <= X86_64_MEM_PAGE_SIZE * X86_64_PTABLE_SIZE);
+/*     assert(size <= MEM_PAGE_SIZE); */
+
+    for(size_t i = 0; i < size; i += X86_64_MEM_PAGE_SIZE,
+            base += X86_64_MEM_PAGE_SIZE, vbase += X86_64_MEM_PAGE_SIZE) {
+        // No kernel image above 4 GByte
+        assert(base < ((lpaddr_t)4 << 30));
+
+        // Identity-map the kernel's physical region, so we don't lose ground
+        paging_x86_64_map_table(&boot_pml4[X86_64_PML4_BASE(base)], (lpaddr_t)boot_pdpt);
+        paging_x86_64_map_table(&boot_pdpt[X86_64_PDPT_BASE(base)], (lpaddr_t)boot_pdir);
+        paging_x86_64_map_large(&boot_pdir[X86_64_PDIR_BASE(base)], base, PTABLE_PRESENT
+                                | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    }
+
+    // Identity-map the first 1G of physical memory for bootloader data
+    paging_x86_64_map_table(&boot_pml4[0], (lpaddr_t)boot_pdpt);
+    paging_x86_64_map_table(&boot_pdpt[0], (lpaddr_t)boot_pdir_1GB);
+    for (int i = 0; i < X86_64_PTABLE_SIZE; i++) {
+        paging_x86_64_map_large(&boot_pdir_1GB[X86_64_PDIR_BASE(X86_64_MEM_PAGE_SIZE * i)],
+                                X86_64_MEM_PAGE_SIZE * i, PTABLE_PRESENT
+                                | PTABLE_READ_WRITE | PTABLE_USER_SUPERVISOR);
+    }
+
+    // Activate new page tables
+    paging_x86_64_context_switch((lpaddr_t)boot_pml4);
+}
+
+
 
 
 /**
@@ -497,6 +605,9 @@ void arch_init(uint64_t magic, void *pointer)
     // the first kernel
     serial_console_init((magic == MULTIBOOT_INFO_MAGIC));
 
+    serial_console_putchar('A');
+    serial_console_putchar('A');
+    serial_console_putchar('\n');
 
     struct multiboot_info *mb = NULL;
 
@@ -540,11 +651,28 @@ void arch_init(uint64_t magic, void *pointer)
 
     printf("Booting Test done.\n");
     
-    simple_paging_init();
+    // Alias kernel on top of memory, keep low memory
+    paging_init((lpaddr_t)&_start_kernel, SIZE_KERNEL_IMAGE);
 
-    page_table_write_test();
+    printf("Paging Reset\n");
+    paging_x86_64_reset();
 
-    virtual_address_read_test();
+    printf("Mapping First 8GB of Memory\n");
+    if(paging_x86_64_map_memory(0, 4UL << 30) != 0) {
+        panic("error while mapping physical memory!");
+    }
+
+    printf("setting up IDT\n");
+    setup_default_idt();
+
+    printf("setting up apic\n");
+    apic_init();
+
+    // simple_paging_init();
+
+    // page_table_write_test();
+
+    // virtual_address_read_test();
 
     for (uint8_t target_apic_id = 1; target_apic_id <= 3; target_apic_id++) {
         printf("Starting AP with APIC ID %d...\n", target_apic_id);
@@ -553,6 +681,7 @@ void arch_init(uint64_t magic, void *pointer)
         } else {
             printf("Failed to start AP %d\n", target_apic_id);
         }
+        halt();
     }
 
     halt();

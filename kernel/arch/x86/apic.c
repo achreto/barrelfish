@@ -117,7 +117,7 @@ void apic_init(void)
         panic("apic_init(): could not map APIC registers");
     }
 
-    debug(SUBSYS_APIC, "Accessing APIC at 0x%"PRIxLPADDR" / 0x%"PRIxLVADDR"\n",
+    printf("Accessing APIC at 0x%"PRIxLPADDR" / 0x%"PRIxLVADDR"\n",
           apic_phys, apic_base);
     xapic_initialize(&apic, (void *)apic_base);
 

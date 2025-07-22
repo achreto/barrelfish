@@ -107,6 +107,9 @@ static int paging_map_mem(lpaddr_t base, size_t size, uint64_t bitmap)
     lvaddr_t vaddr, vbase = local_phys_to_mem(base);
     lpaddr_t addr;
 
+    printf("Paging Map Memory: 0x%lx -> 0x%lx\n",
+        vbase, base);
+
     // Align given physical base address
     if(base & X86_64_MEM_PAGE_MASK) {
         base -= base & X86_64_MEM_PAGE_MASK;
@@ -129,10 +132,10 @@ static int paging_map_mem(lpaddr_t base, size_t size, uint64_t bitmap)
         union x86_64_ptable_entry *pdir_base =
             &mem_pdir[X86_64_PML4_BASE(addr)][X86_64_PDPT_BASE(addr)][X86_64_PDIR_BASE(vaddr)];
 
-        debug(SUBSYS_PAGING, "Mapping 2M page: vaddr = 0x%"PRIxLVADDR"x, addr = 0x%lx, "
-              "PML4_BASE = %lu, PDPT_BASE = %lu, PDIR_BASE = %lu -- ", vaddr,
-              addr, X86_64_PML4_BASE(vaddr), X86_64_PDPT_BASE(vaddr),
-              X86_64_PDIR_BASE(vaddr));
+        // printf("  Mapping 2M page: vaddr = 0x%"PRIxLVADDR"x, addr = 0x%lx, "
+        //       "PML4_BASE = %lu, PDPT_BASE = %lu, PDIR_BASE = %lu --\n", vaddr,
+        //       addr, X86_64_PML4_BASE(vaddr), X86_64_PDPT_BASE(vaddr),
+        //       X86_64_PDIR_BASE(vaddr));
 
         mapit(pml4_base, pdpt_base, pdir_base, addr, bitmap);
     }
@@ -140,6 +143,9 @@ static int paging_map_mem(lpaddr_t base, size_t size, uint64_t bitmap)
     // uint64_t cr3;
     // __asm__ __volatile__("mov %%cr3,%0" : "=a" (cr3) : );
     // __asm__ __volatile__("mov %0,%%cr3" :  : "a" (cr3));
+
+    printf("DONE Paging Map Memory: 0x%lx -> 0x%lx\n",
+        vbase, base);
 
     return 0;
 }

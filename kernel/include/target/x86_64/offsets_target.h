@@ -111,7 +111,8 @@
  *
  * Change VSPACE_END in lib/barrelfish if you change this.
  */
-#define X86_64_MEMORY_OFFSET        X86_64_PML4_ALIGN(-X86_64_PADDR_SPACE_LIMIT)
+#define X86_64_MEMORY_OFFSET        0UL
+// X86_64_PML4_ALIGN(-X86_64_PADDR_SPACE_LIMIT)
 
 /**
  * The real-mode addresses
