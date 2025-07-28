@@ -681,7 +681,6 @@ void arch_init(uint64_t magic, void *pointer)
         } else {
             printf("Failed to start AP %d\n", target_apic_id);
         }
-        halt();
     }
 
     halt();
