@@ -1,4 +1,6 @@
-#include <kernel/arch/x86_64/trace_test.h>
+#include <arch/x86_64/trace_test.h>
+#include <arch/x86_64/paging_test_utils.h>
+#include <arch/x86/apic.h>
 
 void execute_test(void){
     if(apic_id==0){

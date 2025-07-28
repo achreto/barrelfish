@@ -122,6 +122,8 @@ let
      cFiles = [
          "arch/x86_64/init_boot.c",
          "arch/x86_64/irq_boot.c",
+         "arch/x86_64/trace_test.c",
+         "arch/x86_64/paging_test_utils.c",
          "arch/x86/serial.c",
          "arch/x86/apic.c",
          "arch/x86_64/paging.c",
