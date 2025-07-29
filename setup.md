@@ -5,11 +5,11 @@
 ```
 cd barrelfish
 git checkout minimal
-./script.sh
-# inside created docker container
 mkdir build
 cd build
-../hake/hake.sh -a x86_64 -s ../
+./script.sh
+# inside created docker container
+../hake/hake.sh -a x86_64 -s ../ # only the first time
 make help-boot
 make qemu_x86_64_debug
 exit
@@ -17,3 +17,7 @@ exit
 cd build
 ../boot.sh
 ```
+
+## Current state:
+ * script.sh builds inside the container and leaves automatically.
+ TODO: Update it to also automate hake command

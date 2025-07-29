@@ -41,6 +41,7 @@
 #include <target/x86_64/barrelfish_kpi/cpu_target.h>
 #include <coreboot.h>
 #include <kcb.h>
+#include <arch/x86_64/trace_test.h>
 
 #include <dev/xapic_dev.h> // XXX
 #include <dev/ia32_dev.h>

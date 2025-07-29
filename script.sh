@@ -25,8 +25,18 @@ mkdir -p $BF_BUILD
 
 
 # run the command in the docker image
-docker run -u $(id -u) -i -t \
+CONTAINER_ID=$(docker run -u $(id -u) -d \
     --mount type=bind,source=$BF_SOURCE,target=/source \
     --mount type=bind,source=$BF_BUILD,target=/source/build \
     $FAST_MODELS_MOUNT \
-    $BF_DOCKER
+    $BF_DOCKER \
+    bash -c "cd /source/build && make qemu_x86_64_debug")
+
+# wait for the container to finish
+docker wait $CONTAINER_ID
+
+# show the container logs
+docker logs $CONTAINER_ID
+
+# delete the container
+docker rm $CONTAINER_ID
