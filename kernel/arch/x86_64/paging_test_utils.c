@@ -43,4 +43,9 @@ void invalidate_page(lvaddr_t addr){
 }
 
 void barrier(void){
+    __asm volatile("mfence\n\t"
+                   : /* No output */
+                   : /* No input */
+                   :
+                   );
 }
