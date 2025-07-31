@@ -183,7 +183,7 @@ void paging_x86_64_reset(void)
         panic("error while mapping physical memory!");
     }
 #endif
-
+    printf("PTModel core %d: pml4 = 0x%lx\n", my_core_id, (uint64_t)mem_to_local_phys((lvaddr_t)pml4));
     // Switch to new page layout
     paging_x86_64_context_switch(mem_to_local_phys((lvaddr_t)pml4));
 }
