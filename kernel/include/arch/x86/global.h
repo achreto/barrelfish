@@ -36,6 +36,9 @@ struct global {
     bool started_once;
 
     genpaddr_t notify[MAX_COREID];
+
+    void *pml4; // allocate a page, then copy the pml4 in paging.c (on the BSP core)
+    void *mem;
 };
 
 extern struct global *global;

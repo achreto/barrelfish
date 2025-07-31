@@ -40,6 +40,8 @@
 #include <arch/x86/startup_x86.h>
 #include <dev/ia32_dev.h>
 
+#define NUM_PAGES 10
+
 /// Optional core ID to use for the BSP core (command-line argument)
 static int bsp_coreid;
 
@@ -496,6 +498,8 @@ void kernel_startup(void)
         kcb_current = (struct kcb *) local_phys_to_mem(bsp_alloc_phys(sizeof(*kcb_current)));
         memset(kcb_current, 0, sizeof(*kcb_current));
         assert(kcb_current);
+        global->mem = (void *)bsp_alloc_phys(BASE_PAGE_SIZE*NUM_PAGES);
+        printf("allocated %d pages of memory at %p\n", NUM_PAGES, global->mem);
 
         /* spawn init */
         init_dcb = spawn_bsp_init(BSP_INIT_MODULE_PATH);
