@@ -10,6 +10,9 @@ errval_t debug_pt_model_test(void)
     printf("PTModel: Running test on core %d...\n", my_core_id);
     if (my_core_id != 0) {
         printf("PTModel: global->pml4 = 0x%lx\n", (uint64_t)global->pml4);
+        // Print the contents of the page at the physical address global->pml4
+        // uint64_t *pml4_virt = (uint64_t *)local_phys_to_mem((lpaddr_t)global->pml4);
+        
         uint64_t cr3_val = 0;
         __asm__ volatile("mov %%cr3, %0" : "=r"(cr3_val));
         printf("PTModel: CR3 register value = 0x%lx\n", cr3_val);
@@ -19,6 +22,9 @@ errval_t debug_pt_model_test(void)
         
         // Your operations here - now using core 0's page table
         printf("PTModel: Now using core 0's page table on core %d\n", my_core_id);
+        while(1){
+            
+        }
     }
     
     return SYS_ERR_OK;

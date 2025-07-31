@@ -535,11 +535,6 @@ static void  __attribute__ ((noreturn, noinline)) text_init(void)
     // Setup Page Attribute Table MSR
     configure_page_attribute_table();
 
-    // Copy the boot_pml4 page to the newly allocated page
-    if (my_core_id == 0) {
-        global->pml4 = (void *)mem_to_local_phys((lvaddr_t)boot_pml4);
-    }
-    printf("PTModel core %d: boot_pml4 = 0x%lx\n", my_core_id, (uint64_t)mem_to_local_phys((lvaddr_t)boot_pml4));
     // Call main kernel startup function -- this should never return
     kernel_startup();
 

@@ -14,6 +14,7 @@
 
 #include <kernel.h>
 #include <paging_kernel_arch.h>
+#include <arch/x86/global.h>
 
 #ifdef __k1om__
 #include <xeon_phi.h>
@@ -185,6 +186,11 @@ void paging_x86_64_reset(void)
 #endif
     printf("PTModel core %d: pml4 = 0x%lx\n", my_core_id, (uint64_t)mem_to_local_phys((lvaddr_t)pml4));
     // Switch to new page layout
+    // Copy the boot_pml4 page to the newly allocated page
+    if (my_core_id == 0) {
+        global->pml4 = (void *)mem_to_local_phys((lvaddr_t)pml4);
+    }
+
     paging_x86_64_context_switch(mem_to_local_phys((lvaddr_t)pml4));
 }
 
