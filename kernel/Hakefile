@@ -128,6 +128,7 @@ let
                 "arch/x86_64/svm_vmkit.c",
                 "arch/x86_64/page_mappings_arch.c",
                 "arch/x86_64/pt_model_test.c",
+                "arch/x86_64/paging_test_utils.c",
                 "arch/x86/apic.c",
                 "arch/x86/pic.c",
                 "arch/x86/pit.c",
