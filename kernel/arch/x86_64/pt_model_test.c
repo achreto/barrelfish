@@ -152,7 +152,7 @@ static errval_t create_multiple_page_directories(void)
 {
     printf("PTModel: Creating multiple page directories example using global->mem pages...\n");
     
-    size_t safe_pml4_index = 1;
+    size_t safe_pml4_index = 0;
     
     // Example: Create a hierarchy using pages from global->mem
     // Use PML4 index 1, and pages 0, 1, 2 from global->mem
@@ -165,12 +165,13 @@ static errval_t create_multiple_page_directories(void)
     // Example mappings with different page sizes
     uint64_t base_flags = X86_64_PTABLE_PRESENT | X86_64_PTABLE_READ_WRITE;
     
-    // Map some 4KB pages (using PML4 index 1)
+    // Map some 4KB pages (using PML4 index 0)
     for (int i = 0; i < 5; i++) {
-        // Use virtual addresses that correspond to PML4 index 1
-        // PML4 index 1 means bits 39-47 should be 1
-        // So we use addresses starting from 0x8000000000
-        lvaddr_t vaddr = 0x8000000000 + (i * BASE_PAGE_SIZE);
+        // Use virtual addresses that correspond to PML4 index 0
+        // PML4 index 0 means bits 39-47 should be 0
+        // PD index 0 means bits 21-29 should be 0
+        // So we use addresses starting from 0x1000 (4KB)
+        lvaddr_t vaddr = 0x1000 + (i * BASE_PAGE_SIZE);
         lpaddr_t paddr = 0x100000 + (i * BASE_PAGE_SIZE);  // Use more realistic physical addresses
         map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
         
@@ -188,7 +189,7 @@ static errval_t create_multiple_page_directories(void)
     }
     
     // Map a 2MB large page
-    lvaddr_t large_vaddr = 0x8000000000 + 0x200000;  // 2MB aligned, PML4 index 1
+    lvaddr_t large_vaddr = 0x1000 + 0x200000;  // 2MB aligned, PML4 index 0
     lpaddr_t large_paddr = 0x400000;  // 2MB aligned
     map_virtual_to_physical(&hierarchy, large_vaddr, large_paddr, base_flags);
     
