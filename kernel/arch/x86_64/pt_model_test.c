@@ -5,6 +5,7 @@
 #include <dev/amd64_dev.h>
 #include <systime.h>
 #include <paging_test.h>
+#include <paging_test_utils.h>
 
 #define NUM_PDPT_PAGES 1
 #define NUM_PD_PAGES 1
@@ -104,14 +105,16 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
         lpaddr_t pdpt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pdpt);
         paging_x86_64_map_table(&hierarchy->pml4[pml4_index], pdpt_phys);
         
+        
         // PDPT[0] -> PD (using physical address of global->mem page)
         lpaddr_t pd_phys = mem_to_local_phys((lvaddr_t)hierarchy->pd);
         paging_x86_64_map_table(&hierarchy->pdpt[0], pd_phys);
         
         // PD[0] -> PT (using physical address of global->mem page)
         lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
-        paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
+        // paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
         
+        write_pte((lpaddr_t)pd_phys, 2, 0, pt_phys, true);
         printf("PTModel: Set up page table hierarchy using global->mem pages\n");
         
         // Flush TLB to ensure the new mappings are visible
@@ -235,7 +238,7 @@ errval_t debug_pt_model_test(void)
 
         test_page_directories(hierarchy, safe_pml4_index);
 
-        // execute_test(hierarchy.mem_page_pd, hierarchy.mem_page_pt, hierarchy.mem_page_data);
+        // execute_test((lvaddr_t)hierarchy.pd, (lvaddr_t)hierarchy.pt, (lvaddr_t)hierarchy.data);
         
         // Your operations here - now using core 0's page table
         printf("PTModel: Now using core 0's page table on core %d\n", my_core_id);

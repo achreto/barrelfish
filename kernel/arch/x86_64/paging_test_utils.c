@@ -28,24 +28,38 @@
 #include <barrelfish_kpi/cpu_arch.h>
 #include <target/x86_64/barrelfish_kpi/cpu_target.h>
 #include <coreboot.h>
+#include <target/x86_64/paging_kernel_target.h>
 #include <kcb.h>
 
-void write_pte(lpaddr_t source, size_t level, lvaddr_t virt_addr, lpaddr_t dest, bool valid){
-    uint64_t flags = X86_64_PTABLE_PRESENT | X86_64_PTABLE_READ_WRITE; // todo: check for valid
-    size_t index = -1;
-    switch(level){
-        case 2:
-            index = X86_64_PDIR_BASE(virt_addr);
-            break;
-        case 3:
-            index = X86_64_PTABLE_BASE(virt_addr);
-            break;
-        default:
-            return;
-    }
+void write_pte(lvaddr_t source, size_t level, size_t index, lpaddr_t dest, bool valid){
+    // size_t index = -1;
+    // switch(level){
+    //     case 2:
+    //         index = X86_64_PDIR_BASE(virt_addr);
+    //         break;
+    //     case 3:
+    //         index = X86_64_PTABLE_BASE(virt_addr);
+    //         break;
+    //     default:
+    //         return;
+    // }
     // Convert physical address to virtual address to access the page table entry
-    union x86_64_ptable_entry *pte = (union x86_64_ptable_entry *)local_phys_to_mem(source);
-    paging_x86_64_map(&pte[index], dest, flags);
+    if(level<3){
+        union x86_64_pdir_entry *pde = (union x86_64_pdir_entry *)local_phys_to_mem(source);
+        if(valid){
+            paging_x86_64_map_table(&pde[index], dest);
+        }else{
+            paging_unmap((union x86_64_ptable_entry *)&pde[index]);
+        }
+    }else{
+        uint64_t flags = X86_64_PTABLE_PRESENT | X86_64_PTABLE_READ_WRITE; // todo: check for valid
+        union x86_64_ptable_entry *pte = (union x86_64_ptable_entry *)local_phys_to_mem(source);
+        if(valid){
+            paging_x86_64_map(&pte[index], dest, flags);
+        }else{
+            paging_unmap(&pte[index]);
+        }
+    }
 }
 
 
