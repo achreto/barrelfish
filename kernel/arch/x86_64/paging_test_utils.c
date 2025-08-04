@@ -63,14 +63,19 @@ void write_pte(lvaddr_t source, size_t level, size_t index, lpaddr_t dest, bool 
 }
 
 
-void read_memory(lvaddr_t addr){
+int read_memory(lvaddr_t addr){
     int value = *(int *)addr;
     printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
+    return value;
 }
 
 void write_phys_memory(lpaddr_t addr, uint32_t value){
     uint64_t *pml4_virt = (uint64_t *)local_phys_to_mem((lpaddr_t)addr);
     *pml4_virt = value;
+}
+
+void write_memory(lvaddr_t addr, uint32_t value){
+    *(int *)addr = value;
 }
 
 void invalidate_page(lvaddr_t addr){

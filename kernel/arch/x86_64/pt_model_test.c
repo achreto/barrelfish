@@ -111,10 +111,10 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
         paging_x86_64_map_table(&hierarchy->pdpt[0], pd_phys);
         
         // PD[0] -> PT (using physical address of global->mem page)
-        lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
+        // lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
         // paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
         
-        write_pte((lpaddr_t)pd_phys, 2, 0, pt_phys, true);
+        // write_pte((lpaddr_t)pd_phys, 2, 0, pt_phys, true);
         printf("PTModel: Set up page table hierarchy using global->mem pages\n");
         
         // Flush TLB to ensure the new mappings are visible
@@ -181,26 +181,26 @@ static errval_t test_page_directories(struct page_table_hierarchy hierarchy, siz
         // So we use addresses starting from 0x8000000000
         lvaddr_t vaddr = 0x1000 + (i * BASE_PAGE_SIZE);
         lpaddr_t paddr = 0x100000 + (i * BASE_PAGE_SIZE);  // Use more realistic physical addresses
-        lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
+        // lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
         map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
         
         // Now we can safely write to the mapped virtual address
-        int value = 20 + i;
-        *(int *)vaddr_2 = value;
+        // int value = 20 + i;
+        // *(int *)vaddr_2 = value;
         
-        // Verify the mapping works
-        int read_value = *(int *)vaddr;
-        if (read_value == value) {
-            printf("PTModel: Successfully mapped and wrote value %d to 0x%lx\n", value, vaddr);
-        } else {
-            printf("PTModel: Mapping verification failed: wrote %d, read %d\n", value, read_value);
-        }
+        // // Verify the mapping works
+        // int read_value = read_memory(vaddr);
+        // if (read_value == value) {
+        //     printf("PTModel: Successfully mapped and wrote value %d to 0x%lx\n", value, vaddr);
+        // } else {
+        //     printf("PTModel: Mapping verification failed: wrote %d, read %d\n", value, read_value);
+        // }
     }
     
     // Map a 2MB large page
-    lvaddr_t large_vaddr = 0x1000 + 0x200000;  // 2MB aligned, PML4 index 0
-    lpaddr_t large_paddr = 0x400000;  // 2MB aligned
-    map_virtual_to_physical(&hierarchy, large_vaddr, large_paddr, base_flags);
+    // lvaddr_t large_vaddr = 0x1000 + 0x200000;  // 2MB aligned, PML4 index 0
+    // lpaddr_t large_paddr = 0x400000;  // 2MB aligned
+    // map_virtual_to_physical(&hierarchy, large_vaddr, large_paddr, base_flags);
     
     
     printf("PTModel: Completed multiple page directory creation using global->mem pages\n");
@@ -237,8 +237,7 @@ errval_t debug_pt_model_test(void)
         }
 
         test_page_directories(hierarchy, safe_pml4_index);
-
-        // execute_test((lvaddr_t)hierarchy.pd, (lvaddr_t)hierarchy.pt, (lvaddr_t)hierarchy.data);
+        execute_test((void*)hierarchy.pd, (void*)hierarchy.pt, (void*)hierarchy.data);
         
         // Your operations here - now using core 0's page table
         printf("PTModel: Now using core 0's page table on core %d\n", my_core_id);

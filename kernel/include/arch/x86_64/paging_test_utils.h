@@ -5,9 +5,11 @@
 
 void write_pte(lpaddr_t source, size_t level, size_t index, lpaddr_t dest, bool valid);
 
-void read_memory(lvaddr_t addr);
+int read_memory(lvaddr_t addr);
 
 void write_phys_memory(lpaddr_t addr, uint32_t value);
+
+void write_memory(lvaddr_t addr, uint32_t value);
 
 void invalidate_page(lvaddr_t addr);
 
