@@ -35,15 +35,17 @@ void write_pte(lpaddr_t source, size_t level, lvaddr_t virt_addr, lpaddr_t dest,
     size_t index = -1;
     switch(level){
         case 2:
-            index = X86_64_PDIR_BASE(vaddr);
+            index = X86_64_PDIR_BASE(virt_addr);
             break;
         case 3:
-            index = X86_64_PTABLE_BASE(vaddr);
+            index = X86_64_PTABLE_BASE(virt_addr);
             break;
         default:
             return;
     }
-    paging_x86_64_map(&source[index], dest, flags);
+    // Convert physical address to virtual address to access the page table entry
+    union x86_64_ptable_entry *pte = (union x86_64_ptable_entry *)local_phys_to_mem(source);
+    paging_x86_64_map(&pte[index], dest, flags);
 }
 
 

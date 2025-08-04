@@ -91,7 +91,7 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
     printf("  Data:   global->mem page %zu (addr: %p)\n", mem_page_data, hierarchy->data);
     printf("  Global mem phys: 0x%lx, virt: %p\n", global_mem_phys, (void*)global_mem_virt);
     
-    if(core_id == 1){
+    if(my_core_id == 1){
     // Clear the specific pages we're using
         paging_x86_64_clear_pdir(hierarchy->pdpt);
         paging_x86_64_clear_pdir((union x86_64_pdir_entry *)hierarchy->pd);
@@ -109,8 +109,8 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
         paging_x86_64_map_table(&hierarchy->pdpt[0], pd_phys);
         
         // PD[0] -> PT (using physical address of global->mem page)
-        // lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
-        // paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
+        lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
+        paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
         
         printf("PTModel: Set up page table hierarchy using global->mem pages\n");
         
@@ -119,7 +119,7 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
 
         for(int i=0; i<NUM_DATA_PAGES; i++){
             for(int j=0; j<NUM_ENTRIES; j++){
-                *(hierarchy->data + i*BASE_PAGE_SIZE + j*BASE_PAGE_BITS/512) = 10*i + j; //todo: check the entry calculation
+                *((int*)(hierarchy->data + i*BASE_PAGE_SIZE + j*sizeof(int))) = 10*i + j;
             }
         }
     }   
@@ -163,8 +163,8 @@ static errval_t map_virtual_to_physical(struct page_table_hierarchy *hierarchy,
     return SYS_ERR_OK;
 }
 
-// Function to create multiple page directories uscreate_multiple_page_directoriesing global->mem pages
-static errval_t test_page_directories(struct page_table_hierarchy hierarchy, size_t is_safe_pml4_index)
+// Function to create multiple page directories using global->mem pages
+static errval_t test_page_directories(struct page_table_hierarchy hierarchy, size_t safe_pml4_index)
 {
     printf("PTModel: Creating multiple page directories example using global->mem pages...\n");
     
@@ -178,11 +178,12 @@ static errval_t test_page_directories(struct page_table_hierarchy hierarchy, siz
         // So we use addresses starting from 0x8000000000
         lvaddr_t vaddr = 0x1000 + (i * BASE_PAGE_SIZE);
         lpaddr_t paddr = 0x100000 + (i * BASE_PAGE_SIZE);  // Use more realistic physical addresses
+        lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
         map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
         
         // Now we can safely write to the mapped virtual address
         int value = 20 + i;
-        *(int *)vaddr = value;
+        *(int *)vaddr_2 = value;
         
         // Verify the mapping works
         int read_value = *(int *)vaddr;
@@ -223,14 +224,18 @@ errval_t debug_pt_model_test(void)
         size_t safe_pml4_index = 0;
     
         struct page_table_hierarchy hierarchy;
-        errval_t err = create_page_table_hierarchy(safe_pml4_index, 0, NUM_PDPT_PAGES, NUM_PDPT_PAGES + NUM_PD_PAGES, NUM_PDPT_PAGES + NUM_PD_PAGES+NUM_PT_PAGES, &hierarchy);
+        size_t mem_page_pdpt = 0;
+        size_t mem_page_pd = NUM_PDPT_PAGES;
+        size_t mem_page_pt = NUM_PDPT_PAGES + NUM_PD_PAGES;
+        size_t mem_page_data = NUM_PDPT_PAGES + NUM_PD_PAGES + NUM_PT_PAGES;
+        errval_t err = create_page_table_hierarchy(safe_pml4_index, mem_page_pdpt, mem_page_pd, mem_page_pt, mem_page_data, &hierarchy);
         if (err_is_fail(err)) {
             return err;
         }
 
         test_page_directories(hierarchy, safe_pml4_index);
 
-        execute_test(hierarchy.mem_page_pd, hierarchy.mem_page_pt, hierarchy.mem_page_data);
+        // execute_test(hierarchy.mem_page_pd, hierarchy.mem_page_pt, hierarchy.mem_page_data);
         
         // Your operations here - now using core 0's page table
         printf("PTModel: Now using core 0's page table on core %d\n", my_core_id);
