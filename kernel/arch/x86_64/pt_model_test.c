@@ -4,10 +4,13 @@
 #include <arch/x86/global.h>
 #include <dev/amd64_dev.h>
 #include <systime.h>
+#include <paging_test.h>
 
+#define NUM_PDPT_PAGES 1
 #define NUM_PD_PAGES 1
-#define NUM_PT_PAGES 1
-#define NUM_PDPT_PAGES 4 
+#define NUM_PT_PAGES 3
+#define NUM_DATA_PAGES 2
+#define NUM_ENTRIES 2
 
 // Structure to hold page table hierarchy information
 struct page_table_hierarchy {
@@ -15,10 +18,12 @@ struct page_table_hierarchy {
     union x86_64_pdir_entry *pdpt;      // Page Directory Pointer Table (uses global->mem pages)
     union x86_64_ptable_entry *pd;      // Page Directory (uses global->mem pages)
     union x86_64_ptable_entry *pt;      // Page Table (uses global->mem pages)
+    void *data;                         // Data memory (uses global->mem pages)
     size_t pml4_index;                  // Which PML4 entry to use
     size_t mem_page_pdpt;               // Which page from global->mem to use for PDPT
     size_t mem_page_pd;                 // Which page from global->mem to use for PD
     size_t mem_page_pt;                 // Which page from global->mem to use for PT
+    size_t mem_page_data;
 };
 
 // Function to check if a PML4 entry is safe to use (not used by kernel)
@@ -47,6 +52,7 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
                                    size_t mem_page_pdpt,
                                    size_t mem_page_pd,
                                    size_t mem_page_pt,
+                                   size_t mem_page_data,
                                    struct page_table_hierarchy *hierarchy)
 {
     printf("PTModel: Creating page table hierarchy using global->mem pages:\n");
@@ -71,42 +77,52 @@ static errval_t create_page_table_hierarchy(size_t pml4_index,
     hierarchy->pdpt = (union x86_64_pdir_entry *)(global_mem_virt + (mem_page_pdpt * BASE_PAGE_SIZE));
     hierarchy->pd = (union x86_64_ptable_entry *)(global_mem_virt + (mem_page_pd * BASE_PAGE_SIZE));
     hierarchy->pt = (union x86_64_ptable_entry *)(global_mem_virt + (mem_page_pt * BASE_PAGE_SIZE));
+    hierarchy->data = (void*)(global_mem_virt + (mem_page_data* BASE_PAGE_SIZE));
     hierarchy->mem_page_pdpt = mem_page_pdpt;
     hierarchy->mem_page_pd = mem_page_pd;
     hierarchy->mem_page_pt = mem_page_pt;
+    hierarchy->mem_page_data = mem_page_data;
     
     printf("PTModel: Using global->mem pages:\n");
     printf("  PML4: global->pml4 at index %zu (safe)\n", pml4_index);
     printf("  PDPT: global->mem page %zu (addr: %p)\n", mem_page_pdpt, hierarchy->pdpt);
     printf("  PD:   global->mem page %zu (addr: %p)\n", mem_page_pd, hierarchy->pd);
     printf("  PT:   global->mem page %zu (addr: %p)\n", mem_page_pt, hierarchy->pt);
+    printf("  Data:   global->mem page %zu (addr: %p)\n", mem_page_data, hierarchy->data);
     printf("  Global mem phys: 0x%lx, virt: %p\n", global_mem_phys, (void*)global_mem_virt);
     
+    if(core_id == 1){
     // Clear the specific pages we're using
-    paging_x86_64_clear_pdir(hierarchy->pdpt);
-    paging_x86_64_clear_pdir((union x86_64_pdir_entry *)hierarchy->pd);
-    paging_x86_64_clear_ptable(hierarchy->pt);
-    
-    printf("PTModel: Cleared page directory pages\n");
-    
-    // Set up the page table hierarchy
-    // PML4[pml4_index] -> PDPT (using physical address of global->mem page)
-    lpaddr_t pdpt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pdpt);
-    paging_x86_64_map_table(&hierarchy->pml4[pml4_index], pdpt_phys);
-    
-    // PDPT[0] -> PD (using physical address of global->mem page)
-    lpaddr_t pd_phys = mem_to_local_phys((lvaddr_t)hierarchy->pd);
-    paging_x86_64_map_table(&hierarchy->pdpt[0], pd_phys);
-    
-    // PD[0] -> PT (using physical address of global->mem page)
-    lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
-    paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
-    
-    printf("PTModel: Set up page table hierarchy using global->mem pages\n");
-    
-    // Flush TLB to ensure the new mappings are visible
-    __asm__ volatile("invlpg (%0)" : : "r" (0) : "memory");
-    
+        paging_x86_64_clear_pdir(hierarchy->pdpt);
+        paging_x86_64_clear_pdir((union x86_64_pdir_entry *)hierarchy->pd);
+        paging_x86_64_clear_ptable(hierarchy->pt);
+        
+        printf("PTModel: Cleared page directory pages\n");
+        
+        // Set up the page table hierarchy
+        // PML4[pml4_index] -> PDPT (using physical address of global->mem page)
+        lpaddr_t pdpt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pdpt);
+        paging_x86_64_map_table(&hierarchy->pml4[pml4_index], pdpt_phys);
+        
+        // PDPT[0] -> PD (using physical address of global->mem page)
+        lpaddr_t pd_phys = mem_to_local_phys((lvaddr_t)hierarchy->pd);
+        paging_x86_64_map_table(&hierarchy->pdpt[0], pd_phys);
+        
+        // PD[0] -> PT (using physical address of global->mem page)
+        // lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)hierarchy->pt);
+        // paging_x86_64_map_table((union x86_64_pdir_entry *)&hierarchy->pd[0], pt_phys);
+        
+        printf("PTModel: Set up page table hierarchy using global->mem pages\n");
+        
+        // Flush TLB to ensure the new mappings are visible
+        __asm__ volatile("invlpg (%0)" : : "r" (0) : "memory");
+
+        for(int i=0; i<NUM_DATA_PAGES; i++){
+            for(int j=0; j<NUM_ENTRIES; j++){
+                *(hierarchy->data + i*BASE_PAGE_SIZE + j*BASE_PAGE_BITS/512) = 10*i + j; //todo: check the entry calculation
+            }
+        }
+    }   
     return SYS_ERR_OK;
 }
 
@@ -147,30 +163,19 @@ static errval_t map_virtual_to_physical(struct page_table_hierarchy *hierarchy,
     return SYS_ERR_OK;
 }
 
-// Function to create multiple page directories using global->mem pages
-static errval_t create_multiple_page_directories(void)
+// Function to create multiple page directories uscreate_multiple_page_directoriesing global->mem pages
+static errval_t test_page_directories(struct page_table_hierarchy hierarchy, size_t is_safe_pml4_index)
 {
     printf("PTModel: Creating multiple page directories example using global->mem pages...\n");
-    
-    size_t safe_pml4_index = 0;
-    
-    // Example: Create a hierarchy using pages from global->mem
-    // Use PML4 index 1, and pages 0, 1, 2 from global->mem
-    struct page_table_hierarchy hierarchy;
-    errval_t err = create_page_table_hierarchy(safe_pml4_index, 0, NUM_PDPT_PAGES, NUM_PDPT_PAGES + NUM_PD_PAGES, &hierarchy);
-    if (err_is_fail(err)) {
-        return err;
-    }
     
     // Example mappings with different page sizes
     uint64_t base_flags = X86_64_PTABLE_PRESENT | X86_64_PTABLE_READ_WRITE;
     
-    // Map some 4KB pages (using PML4 index 0)
+    // Map some 4KB pages (using PML4 index 1)
     for (int i = 0; i < 5; i++) {
-        // Use virtual addresses that correspond to PML4 index 0
-        // PML4 index 0 means bits 39-47 should be 0
-        // PD index 0 means bits 21-29 should be 0
-        // So we use addresses starting from 0x1000 (4KB)
+        // Use virtual addresses that correspond to PML4 index 1
+        // PML4 index 1 means bits 39-47 should be 1
+        // So we use addresses starting from 0x8000000000
         lvaddr_t vaddr = 0x1000 + (i * BASE_PAGE_SIZE);
         lpaddr_t paddr = 0x100000 + (i * BASE_PAGE_SIZE);  // Use more realistic physical addresses
         map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
@@ -215,7 +220,17 @@ errval_t debug_pt_model_test(void)
         // Switch to core 0's page table (which has kernel mappings)
         paging_x86_64_context_switch((lpaddr_t)global->pml4);
 
-        create_multiple_page_directories();
+        size_t safe_pml4_index = 0;
+    
+        struct page_table_hierarchy hierarchy;
+        errval_t err = create_page_table_hierarchy(safe_pml4_index, 0, NUM_PDPT_PAGES, NUM_PDPT_PAGES + NUM_PD_PAGES, NUM_PDPT_PAGES + NUM_PD_PAGES+NUM_PT_PAGES, &hierarchy);
+        if (err_is_fail(err)) {
+            return err;
+        }
+
+        test_page_directories(hierarchy, safe_pml4_index);
+
+        execute_test(hierarchy.mem_page_pd, hierarchy.mem_page_pt, hierarchy.mem_page_data);
         
         // Your operations here - now using core 0's page table
         printf("PTModel: Now using core 0's page table on core %d\n", my_core_id);

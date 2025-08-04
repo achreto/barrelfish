@@ -30,8 +30,20 @@
 #include <coreboot.h>
 #include <kcb.h>
 
-void write_pte(lpaddr_t source, lpaddr_t dest, bool valid){
-    
+void write_pte(lpaddr_t source, size_t level, lvaddr_t virt_addr, lpaddr_t dest, bool valid){
+    uint64_t flags = X86_64_PTABLE_PRESENT | X86_64_PTABLE_READ_WRITE; // todo: check for valid
+    size_t index = -1;
+    switch(level){
+        case 2:
+            index = X86_64_PDIR_BASE(vaddr);
+            break;
+        case 3:
+            index = X86_64_PTABLE_BASE(vaddr);
+            break;
+        default:
+            return;
+    }
+    paging_x86_64_map(&source[index], dest, flags);
 }
 
 

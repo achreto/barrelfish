@@ -3,7 +3,7 @@
 
 #include <kernel.h>
 
-void write_pte(lpaddr_t source, lpaddr_t dest, bool valid);
+void write_pte(lpaddr_t source, size_t level, lvaddr_t virt_addr, lpaddr_t dest, bool valid);
 
 void read_memory(lvaddr_t addr);
 
