@@ -499,6 +499,7 @@ void kernel_startup(void)
         memset(kcb_current, 0, sizeof(*kcb_current));
         assert(kcb_current);
         global->mem = (void *)bsp_alloc_phys(BASE_PAGE_SIZE*NUM_PAGES);
+        global->shared_count = 0;
         printf("allocated %d pages of memory at %p\n", NUM_PAGES, global->mem);
 
         /* spawn init */

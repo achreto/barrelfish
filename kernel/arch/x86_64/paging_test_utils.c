@@ -65,7 +65,7 @@ void write_pte(lvaddr_t source, size_t level, size_t index, lpaddr_t dest, bool 
 
 int read_memory(lvaddr_t addr){
     int value = *(int *)addr;
-    printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
+    // printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
     return value;
 }
 
@@ -84,4 +84,24 @@ void invalidate_page(lvaddr_t addr){
 
 void barrier(void){
     __asm__ volatile("mfence" : : : "memory");
+}
+
+void sync_cores(void) {
+    // Based on your output, the test runs on cores 1, 2, 3
+    int num_cores = 3;  // Adjust to match your actual core count
+
+    printf("PTModel: Core %d entering sync_cores()...\n", my_core_id);
+    
+    int my_count = __atomic_fetch_add(&global->shared_count, 1, __ATOMIC_SEQ_CST);
+    printf("PTModel: Core %d incremented count to %d\n", my_core_id, my_count + 1);
+    
+    printf("PTModel: Core %d waiting for %d cores...\n", my_core_id, num_cores);
+    while (__atomic_load_n(&global->shared_count, __ATOMIC_ACQUIRE) < num_cores) {
+        // Add a small delay to avoid busy waiting too aggressively
+        __asm__ volatile("pause" : : : "memory");
+    }
+
+    // All cores read TSC simultaneously
+    uint64_t tsc = rdtsc();
+    printf("PTModel: Core %d synced with %d cores at TSC = %lu\n", my_core_id, num_cores, tsc);
 }

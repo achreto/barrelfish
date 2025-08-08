@@ -9,6 +9,7 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
     lpaddr_t pd_phys = mem_to_local_phys((lvaddr_t)pd_start);
     lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)pt_start);
     lpaddr_t data_phys = mem_to_local_phys((lvaddr_t)data_start);
+    sync_cores();
     if(apic_id==1 || apic_id==2 || apic_id==3){
         write_pte(pd_phys + BASE_PAGE_SIZE*0, 2, 0, pt_phys+BASE_PAGE_SIZE*0, true);
         for (int i = 0; i < 2; i++) {

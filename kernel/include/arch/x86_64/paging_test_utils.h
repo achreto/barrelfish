@@ -15,5 +15,6 @@ void invalidate_page(lvaddr_t addr);
 
 void barrier(void);
 
+void sync_cores(void);
 
 #endif // PAGING_TEST_UTILS_H

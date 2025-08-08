@@ -39,6 +39,7 @@ struct global {
 
     void *pml4; // allocate a page, then copy the pml4 in paging.c (on the BSP core)
     void *mem;
+    int shared_count;
 };
 
 extern struct global *global;
