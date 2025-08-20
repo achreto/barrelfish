@@ -66,6 +66,7 @@
 #include <arch/x86/syscall.h>
 #include <arch/x86/ipi_notify.h>
 #include <barrelfish_kpi/cpu_arch.h>
+#include <arch/x86_64/barrelfish_kpi/registers_arch.h>
 #include <kcb.h>
 #include <mdb/mdb_tree.h>
 #include <sys_debug.h>
@@ -215,32 +216,18 @@ __asm (
 
     /* a kernel fault means something bad happened, so we stack
      * everything for the debugger to use, in the GDB frame format */
-    "\nkernel_fault:                                    \n\t"
-    "pushq 6*8(%rsp) /* SS */                           \n\t"
-    "pushq 4*8(%rsp) /* CS */                           \n\t"
-    "pushq 7*8(%rsp) /* EFLAGS */                       \n\t"
-    "pushq 5*8(%rsp) /* RIP */                          \n\t"
-    /* TODO: extend frame size and save FS/GS so we can resume afterwards */
-    "pushq %r15                                         \n\t"
-    "pushq %r14                                         \n\t"
-    "pushq %r13                                         \n\t"
-    "pushq %r12                                         \n\t"
-    "pushq %r11                                         \n\t"
-    "pushq %r10                                         \n\t"
-    "pushq %r9                                          \n\t"
-    "pushq %r8                                          \n\t"
-    "pushq 17*8(%rsp) /* RSP */                         \n\t"
-    "pushq %rbp                                         \n\t"
-    "pushq %rdi                                         \n\t"
-    "pushq %rsi                                         \n\t"
-    "pushq %rdx                                         \n\t"
-    "pushq %rcx                                         \n\t"
-    "pushq %rbx                                         \n\t"
-    "pushq %rax                                         \n\t"
-    "movq 20*8(%rsp), %rdi  /* vector number */         \n\t"
-    "movq 21*8(%rsp), %rsi  /* error code   */          \n\t"
-    "movq %rsp, %rdx       /* save area ptr*/           \n\t"
-    "jmp generic_handle_kernel_exception                \n\t"
+    "\nkernel_fault:                                  \n\t"
+    "addq $16, %rsp                                    \n\t"
+    "pushq %rcx                                            \n\t"
+    "movq 8(%rsp), %rcx                                    \n\t"
+    "addq $16, %rcx                                         \n\t"
+    "movq %rcx, 8(%rsp)                                    \n\t"
+    "popq %rcx                                             \n\t"
+    "iretq                                                 \n\t"
+
+
+
+
 
 
     /* (Device) interrupt. */
@@ -721,7 +708,7 @@ static __attribute__ ((used,noreturn))
         unsigned long *p = (unsigned long *)gdb_save_frame[GDB_X86_64_RSP_REG] + i;
         printf(" %d \t 0x%016lx (%lu)\n", i, *p, *p);
     }
-
+    
     // Drop to the debugger
     gdb_handle_exception(vec, gdb_save_frame);
     panic("gdb_handle_exception returned");

@@ -65,7 +65,15 @@ void write_pte(lvaddr_t source, size_t level, size_t index, lpaddr_t dest, bool 
 
 int read_memory(lvaddr_t addr){
     int value = *(int *)addr;
-    // printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
+    // add inline noops to test
+    // check it faults here by printing address
+    __asm__ volatile(
+        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    );
+    printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
     return value;
 }
 

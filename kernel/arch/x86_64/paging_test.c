@@ -10,8 +10,10 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
     lpaddr_t pt_phys = mem_to_local_phys((lvaddr_t)pt_start);
     lpaddr_t data_phys = mem_to_local_phys((lvaddr_t)data_start);
     sync_cores();
+    printf("PTModel: Core %d executing test\n", apic_id);
     if(apic_id==1 || apic_id==2 || apic_id==3){
         write_pte(pd_phys + BASE_PAGE_SIZE*0, 2, 0, pt_phys+BASE_PAGE_SIZE*0, true);
+        printf("PTModel: Core %d mapped PD to PT\n", apic_id);
         for (int i = 0; i < 2; i++) {
             // Use virtual addresses that correspond to PML4 index 1
             // PML4 index 1 means bits 39-47 should be 1
@@ -19,6 +21,8 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
             lvaddr_t vaddr = 0b000000000000000000000000000000;
             lpaddr_t paddr = data_phys + BASE_PAGE_SIZE*i;  // Use more realistic physical addresses
             lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
+            printf("PTModel: Core %d reading value from vaddr %lx\n", apic_id, vaddr);
+            int read_value = read_memory(vaddr);
             // map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
             write_pte(pt_phys + BASE_PAGE_SIZE*0, 3, 0, paddr, true);
             
@@ -28,7 +32,7 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
             write_memory(vaddr_2, value);
             
             // Verify the mapping works
-            int read_value = read_memory(vaddr);
+            read_value = read_memory(vaddr);
             if (read_value == value) {
                 printf("PTModel: Successfully mapped and wrote value %d to 0x%lx\n", value, vaddr);
             } else {
