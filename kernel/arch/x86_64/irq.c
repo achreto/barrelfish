@@ -217,10 +217,30 @@ __asm (
     /* a kernel fault means something bad happened, so we stack
      * everything for the debugger to use, in the GDB frame format */
     "\nkernel_fault:                                  \n\t"
-    "addq $16, %rsp                                    \n\t"
+    "pushq %rax                                            \n\t"
+    "pushq %rcx                                            \n\t"
+    "pushq %rdx                                            \n\t"
+    "pushq %rsi                                            \n\t"
+    "pushq %rdi                                            \n\t"
+    "pushq %r8                                             \n\t"
+    "pushq %r9                                             \n\t"
+    "pushq %r10                                            \n\t"
+    "pushq %r11                                            \n\t"
+    "callq page_fault_skip                                \n\t"
+    "popq %r11                                            \n\t"
+    "popq %r10                                            \n\t"
+    "popq %r9                                             \n\t"
+    "popq %r8                                             \n\t"
+    "popq %rdi                                            \n\t"
+    "popq %rsi                                            \n\t"
+    "popq %rdx                                            \n\t"
+    "popq %rcx                                            \n\t"
+    "popq %rax                                            \n\t"
+    "movq $-10, %rax                                       \n\t"
+    "addq $16, %rsp                                        \n\t"
     "pushq %rcx                                            \n\t"
     "movq 8(%rsp), %rcx                                    \n\t"
-    "addq $16, %rcx                                         \n\t"
+    "addq $4, %rcx                                         \n\t"
     "movq %rcx, 8(%rsp)                                    \n\t"
     "popq %rcx                                             \n\t"
     "iretq                                                 \n\t"
@@ -625,6 +645,12 @@ errval_t irq_table_notify_domains(struct kcb *kcb)
     }
     return SYS_ERR_OK;
 }
+
+static __attribute__ ((used))
+    void page_fault_skip(void){
+        printf("READ PAGE FAULT\n");
+        // fflush(stdout);
+    }
 
 /**
  * \brief Handles kernel exceptions

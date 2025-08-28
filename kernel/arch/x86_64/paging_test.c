@@ -15,14 +15,12 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
         write_pte(pd_phys + BASE_PAGE_SIZE*0, 2, 0, pt_phys+BASE_PAGE_SIZE*0, true);
         printf("PTModel: Core %d mapped PD to PT\n", apic_id);
         for (int i = 0; i < 2; i++) {
-            // Use virtual addresses that correspond to PML4 index 1
-            // PML4 index 1 means bits 39-47 should be 1
-            // So we use addresses starting from 0x8000000000
             lvaddr_t vaddr = 0b000000000000000000000000000000;
-            lpaddr_t paddr = data_phys + BASE_PAGE_SIZE*i;  // Use more realistic physical addresses
+            lpaddr_t paddr = data_phys + (i + 10 * apic_id)*BASE_PAGE_SIZE;  // Use more realistic physical addresses
             lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
             printf("PTModel: Core %d reading value from vaddr %lx\n", apic_id, vaddr);
-            int read_value = read_memory(vaddr);
+            int read_value;
+            read_value = read_memory(vaddr);
             // map_virtual_to_physical(&hierarchy, vaddr, paddr, base_flags);
             write_pte(pt_phys + BASE_PAGE_SIZE*0, 3, 0, paddr, true);
             
@@ -38,6 +36,7 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
             } else {
                 printf("PTModel: Mapping verification failed: wrote %d, read %d\n", value, read_value);
             }
+            write_pte(pt_phys + BASE_PAGE_SIZE*0, 3, 0, paddr, false);
         }
     }
 }

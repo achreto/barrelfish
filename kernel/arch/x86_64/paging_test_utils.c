@@ -67,12 +67,14 @@ int read_memory(lvaddr_t addr){
     int value = *(int *)addr;
     // add inline noops to test
     // check it faults here by printing address
-    __asm__ volatile(
-        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
-        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
-        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
-        "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
-    );
+    // __asm__ volatile(
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    //     // "nop\n\t""nop\n\t""nop\n\t""nop\n\t""nop\n\t"
+    // );
     printf("PTModel core %d: read_memory: addr = 0x%lx, value = 0x%x\n", my_core_id, addr, value);
     return value;
 }
