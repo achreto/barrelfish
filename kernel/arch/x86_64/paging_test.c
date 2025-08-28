@@ -16,7 +16,7 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
         printf("PTModel: Core %d mapped PD to PT\n", apic_id);
         for (int i = 0; i < 2; i++) {
             lvaddr_t vaddr = 0b000000000000000000000000000000;
-            lpaddr_t paddr = data_phys + (i + 10 * apic_id)*BASE_PAGE_SIZE;  // Use more realistic physical addresses
+            lpaddr_t paddr = data_phys + (i + 10 * apic_id)*BASE_PAGE_SIZE;  
             lvaddr_t vaddr_2 = local_phys_to_mem(paddr);
             printf("PTModel: Core %d reading value from vaddr %lx\n", apic_id, vaddr);
             int read_value;
@@ -26,7 +26,6 @@ void execute_test(void* pd_start, void* pt_start, void* data_start){
             
             // Now we can safely write to the mapped virtual address
             int value = 20 + i;
-            // *(int *)vaddr_2 = value;
             write_memory(vaddr_2, value);
             
             // Verify the mapping works
